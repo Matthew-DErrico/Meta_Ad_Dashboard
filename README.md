@@ -24,7 +24,7 @@ This project aims to address these gaps by implementing:
 
 ---
 
-## Architecture Summary (Option A – Initial Implementation)
+## Architecture Summary
 
 **Option A** is selected initially due to its lower risk and faster implementation timeline.
 
@@ -65,7 +65,7 @@ The data warehouse uses a **Snowflake Schema**, optimized for analytical queries
 - **Dim_Platform**
 - **Dim_Ad_Creative**
 
-This design reduces redundancy while maintaining strong query performance.
+This design will reduce redundancy while maintaining strong query performance.
 
 ---
 
@@ -79,8 +79,8 @@ This design reduces redundancy while maintaining strong query performance.
 - Pandas
 
 ### Frontend
-- Web-based UI (Option A: simple frontend)
-- Option B (future): richer interactive UI
+- Option A: Tableau Public / Tableau Server + Public URL (Simpler and supports future expansion into option B)
+- Option B (future): Web App + Embedded Analytics (More adanced)
 
 ### Infrastructure
 - Docker
