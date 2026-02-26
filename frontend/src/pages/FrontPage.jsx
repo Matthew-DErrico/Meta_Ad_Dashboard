@@ -11,9 +11,12 @@ export default function FrontPage() {
   const handleSearch = (e) => {
     e.preventDefault();
 
-    // Eventually pass the query to /results
-    // For now just navigate to the results page
-    navigate("/results");
+    // Pass data through URL search params
+    const searchParams = new URLSearchParams();
+    if (query) searchParams.append("query", query);
+    if (countryFilter) searchParams.append("country", countryFilter);
+    if (dateRangeFilter) searchParams.append("dateRange", dateRangeFilter);
+    navigate(`/results?${searchParams.toString()}`);
   };
 
   return (
