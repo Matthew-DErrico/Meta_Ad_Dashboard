@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 export default function FrontPage() {
   const [query, setQuery] = useState("");
-  const [countryFilter, setCountryFilter] = useState("");
-  const [dateRangeFilter, setDateRangeFilter] = useState("");
+  const [countryFilter, setCountryFilter] = useState("All");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All");
+  const [advertiserFilter, setAdvertiserFilter] = useState("All");
   const navigate = useNavigate();
 
   // Placeholder search handler
@@ -16,6 +17,7 @@ export default function FrontPage() {
     if (query) searchParams.append("query", query);
     if (countryFilter) searchParams.append("country", countryFilter);
     if (dateRangeFilter) searchParams.append("dateRange", dateRangeFilter);
+    if (advertiserFilter) searchParams.append("advertiser", advertiserFilter);
     navigate(`/results?${searchParams.toString()}`);
   };
 
@@ -44,7 +46,7 @@ export default function FrontPage() {
           marginRight: "0.5rem",
         }}
       >
-        <option value="">All</option>
+        <option value="All">All Countries</option>
         <option value="United States">United States</option>
         <option value="United Kingdom">United Kingdom</option>
         <option value="Canada">Canada</option>
@@ -64,17 +66,36 @@ export default function FrontPage() {
           maxWidth: "80%",
         }}
       >
-        <option value="">All</option>
+        <option value="All">All Time</option>
         <option value="Last 7 Days">Last 7 Days</option>
         <option value="Last 30 Days">Last 30 Days</option>
         <option value="Last Year">Last Year</option>
+      </select>
+
+      <label>Advertiser: </label>
+      <select
+        value={advertiserFilter}
+        onChange={(e) => setAdvertiserFilter(e.target.value)}
+        style={{
+          padding: "0.75rem",
+          width: "150px",
+          border: "1px solid #ccc",
+          borderRadius: "6px",
+          marginRight: "0.5rem",
+          maxWidth: "80%",
+        }}
+      >
+        <option value="All">All Advertisers</option>
+        <option value="Nike">Nike</option>
+        <option value="Apple">Apple</option>
+        <option value="Microsoft">Microsoft</option>
       </select>
 
       {/* Search Bar */}
       <form onSubmit={handleSearch} style={{ marginTop: "1rem" }}>
         <input
           type="text"
-          placeholder="Search for an advertiser, keyword, or topic..."
+          placeholder="Search for a keyword, or topic..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={{
