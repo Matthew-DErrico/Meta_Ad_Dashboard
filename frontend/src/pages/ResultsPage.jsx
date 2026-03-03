@@ -179,6 +179,7 @@ export default function ResultsPage() {
         Tableau dashboard placeholder (TREND CHART)
       </div>
       {/* Placeholder for ads list */}
+      {/* Frontend will deal with sorting the ads based on amount spent and reach, backend will just send the data in a random order */}
       <h4> Ads List </h4>
       <label>Sorting Options: </label>
       {/* Spent Sorting Options */}
@@ -235,20 +236,82 @@ export default function ResultsPage() {
             : "Reach (Lowest To Highest) ↓"
           : "← Sort By Reach"}
       </button>
-      {/* Ad List Placeholder */}
+      {/* Ad List Table */}
       <div
         style={{
           marginTop: "2rem",
           padding: "2rem",
           border: "1px solid #eee",
-          textAlign: "center",
         }}
       >
-        {/* Eventually this will be a table of ads with details */}
-        <h4> Ad Name | Advertiser | Spent | Reach</h4>
-        <p>Ad 1 | Nike | $5,000 | 1M</p>
-        <p>Ad 2 | Nike | $3,000 | 500K</p>
-        <p>Ad 3 | Nike | $2,000 | 300K</p>
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            backgroundColor: "white",
+          }}
+        >
+          <thead>
+            <tr style={{ backgroundColor: "#007bff", color: "white" }}>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
+                Ad Name
+              </th>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
+                Advertiser
+              </th>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
+                Spent
+              </th>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
+                Reach
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: "1px solid #eee" }}>
+              <td style={{ padding: "1rem" }}>Ad 1</td>
+              <td style={{ padding: "1rem" }}>Nike</td>
+              <td style={{ padding: "1rem" }}>$5,000</td>
+              <td style={{ padding: "1rem" }}>1M</td>
+            </tr>
+            <tr style={{ borderBottom: "1px solid #eee" }}>
+              <td style={{ padding: "1rem" }}>Ad 2</td>
+              <td style={{ padding: "1rem" }}>Nike</td>
+              <td style={{ padding: "1rem" }}>$3,000</td>
+              <td style={{ padding: "1rem" }}>500K</td>
+            </tr>
+            <tr style={{ borderBottom: "1px solid #eee" }}>
+              <td style={{ padding: "1rem" }}>Ad 3</td>
+              <td style={{ padding: "1rem" }}>Nike</td>
+              <td style={{ padding: "1rem" }}>$2,000</td>
+              <td style={{ padding: "1rem" }}>300K</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   );

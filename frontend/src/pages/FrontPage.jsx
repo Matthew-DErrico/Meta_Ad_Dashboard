@@ -28,17 +28,15 @@ export default function FrontPage() {
         Explore political ad spending, targeting patterns, and messaging trends
         across Meta platforms.
       </p>
-      <p>
-        May or may not keep navbar, for now it is nice to have for development.
-      </p>
 
       {/*Filter Dropdown*/}
+      {/* Add a search bar feature inside of the dropdown section for easy choosing of filter options */}
       <label>Country: </label>
       <select
         value={countryFilter}
         onChange={(e) => setCountryFilter(e.target.value)}
         style={{
-          marginTop: "2rem",
+          marginTop: "4rem",
           width: "150px",
           padding: "0.75rem",
           border: "1px solid #ccc",
