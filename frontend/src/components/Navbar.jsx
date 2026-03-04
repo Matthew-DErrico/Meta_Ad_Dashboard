@@ -15,7 +15,6 @@ export default function Navbar() {
 
       <div style={{ display: "flex", gap: "1rem" }}>
         <Link to="/">Home</Link>
-        <Link to="/results">Results</Link>
       </div>
     </nav>
   );

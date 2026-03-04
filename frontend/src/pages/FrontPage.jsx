@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
+import { filterDropdownStyle } from "../styles/selectStyles";
 
 export default function FrontPage() {
   const [query, setQuery] = useState("");
-  const [countryFilter, setCountryFilter] = useState("All");
-  const [dateRangeFilter, setDateRangeFilter] = useState("All");
-  const [advertiserFilter, setAdvertiserFilter] = useState("All");
+  const [countryFilter, setCountryFilter] = useState("All Countries");
+  const [dateRangeFilter, setDateRangeFilter] = useState("All Time");
+  const [advertiserFilter, setAdvertiserFilter] = useState("All Advertisers");
   const navigate = useNavigate();
 
   // Placeholder search handler
@@ -31,63 +33,70 @@ export default function FrontPage() {
 
       {/*Filter Dropdown*/}
       {/* Add a search bar feature inside of the dropdown section for easy choosing of filter options */}
-      <label>Country: </label>
-      <select
-        value={countryFilter}
-        onChange={(e) => setCountryFilter(e.target.value)}
+      <div
         style={{
+          display: "flex",
+          gap: "1rem",
           marginTop: "4rem",
-          width: "150px",
-          padding: "0.75rem",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <option value="All">All Countries</option>
-        <option value="United States">United States</option>
-        <option value="United Kingdom">United Kingdom</option>
-        <option value="Canada">Canada</option>
-        <option value="Australia">Australia</option>
-      </select>
-
-      <label>Date Range: </label>
-      <select
-        value={dateRangeFilter}
-        onChange={(e) => setDateRangeFilter(e.target.value)}
-        style={{
-          padding: "0.75rem",
-          width: "150px",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
-          maxWidth: "80%",
-        }}
-      >
-        <option value="All">All Time</option>
-        <option value="Last 7 Days">Last 7 Days</option>
-        <option value="Last 30 Days">Last 30 Days</option>
-        <option value="Last Year">Last Year</option>
-      </select>
-
-      <label>Advertiser: </label>
-      <select
-        value={advertiserFilter}
-        onChange={(e) => setAdvertiserFilter(e.target.value)}
-        style={{
-          padding: "0.75rem",
-          width: "150px",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
-          maxWidth: "80%",
-        }}
-      >
-        <option value="All">All Advertisers</option>
-        <option value="Nike">Nike</option>
-        <option value="Apple">Apple</option>
-        <option value="Microsoft">Microsoft</option>
-      </select>
+        {/* Country dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label>Country: </label>
+          <Select
+            options={[
+              { value: "All Countries", label: "All Countries" },
+              { value: "United States", label: "United States" },
+              { value: "United Kingdom", label: "United Kingdom" },
+              { value: "Canada", label: "Canada" },
+              { value: "Australia", label: "Australia" },
+            ]}
+            isSearchable={true}
+            placeholder="All Countries"
+            onChange={(selectedOption) =>
+              setCountryFilter(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Date Range Dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label>Date Range: </label>
+          <Select
+            options={[
+              { value: "All Time", label: "All Time" },
+              { value: "Last 7 Days", label: "Last 7 Days" },
+              { value: "Last 30 Days", label: "Last 30 Days" },
+              { value: "Last 90 Days", label: "Last 90 Days" },
+            ]}
+            placeholder="All Time"
+            onChange={(selectedOption) =>
+              setDateRangeFilter(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Advertiser Dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label>Advertiser: </label>
+          <Select
+            options={[
+              { value: "All Advertisers", label: "All Advertisers" },
+              { value: "Nike", label: "Nike" },
+              { value: "Apple", label: "Apple" },
+              { value: "Microsoft", label: "Microsoft" },
+            ]}
+            placeholder="All Advertisers"
+            onChange={(selectedOption) =>
+              setAdvertiserFilter(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+      </div>
 
       {/* Search Bar */}
       <form onSubmit={handleSearch} style={{ marginTop: "1rem" }}>
@@ -97,7 +106,7 @@ export default function FrontPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={{
-            padding: "0.75rem",
+            padding: "1rem",
             width: "300px",
             maxWidth: "80%",
             border: "1px solid #ccc",
@@ -109,7 +118,7 @@ export default function FrontPage() {
         <button
           type="submit"
           style={{
-            padding: "0.75rem 1.5rem",
+            padding: "1rem 1.5rem",
             background: "#007bff",
             color: "white",
             border: "none",

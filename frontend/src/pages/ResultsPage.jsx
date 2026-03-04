@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import Select from "react-select";
+import { filterDropdownStyle } from "../styles/selectStyles";
 
 export default function ResultsPage() {
   {
@@ -8,11 +10,11 @@ export default function ResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("query") || "";
   const [newQuery, setNewQuery] = useState(query);
-  const country = searchParams.get("country") || "All";
+  const country = searchParams.get("country") || "All Countries";
   const [selectedCountry, setSelectedCountry] = useState(country);
-  const dateRange = searchParams.get("dateRange") || "All";
+  const dateRange = searchParams.get("dateRange") || "All Time";
   const [newDateRange, setDateRange] = useState(dateRange);
-  const advertiser = searchParams.get("advertiser") || "All";
+  const advertiser = searchParams.get("advertiser") || "All Advertisers";
   const [selectedAdvertiser, setSelectedAdvertiser] = useState(advertiser);
 
   {
@@ -66,8 +68,8 @@ export default function ResultsPage() {
           placeholder="Search for a new topic..."
           style={{
             marginTop: "2rem",
-            width: "150px",
-            padding: "0.75rem",
+            width: "300px",
+            padding: "1rem",
             border: "1px solid #ccc",
             borderRadius: "6px",
             marginRight: "0.5rem",
@@ -76,7 +78,7 @@ export default function ResultsPage() {
         <button
           type="submit"
           style={{
-            padding: "0.75rem 1.5rem",
+            padding: "1rem 1.5rem",
             background: "#007bff",
             color: "white",
             border: "none",
@@ -89,81 +91,88 @@ export default function ResultsPage() {
       </form>
       {/* For advertiser, it will be a drop down with options of advertisers in the database for the specifc topic.
        There should a search feature at the top of the dropdown */}
-      {/* Country Dropdown */}
-      <select
-        value={selectedCountry}
-        onChange={(e) => setSelectedCountry(e.target.value)}
+      {/* Filters Section with Country, Date Range, and Advertiser dropdowns */}
+      <div
         style={{
-          width: "150px",
-          padding: "0.75rem",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
+          display: "flex",
+          gap: "1rem",
+          marginTop: "1rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "center",
         }}
       >
-        <option value="All">All Countries</option>
-        <option value="United States">United States</option>
-        <option value="United Kingdom">United Kingdom</option>
-        <option value="Canada">Canada</option>
-        <option value="Australia">Australia</option>
-      </select>
-      {/* Date Range Dropdown */}
-      <select
-        value={newDateRange}
-        onChange={(e) => setDateRange(e.target.value)}
-        style={{
-          width: "150px",
-          padding: "0.75rem",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
-        }}
-      >
-        <option value="All">All Time</option>
-        <option value="Last 7 Days">Last 7 Days</option>
-        <option value="Last 30 Days">Last 30 Days</option>
-        <option value="Last 90 Days">Last 90 Days</option>
-      </select>
-      {/* Advertiser Dropdown */}
-      <select
-        value={selectedAdvertiser}
-        onChange={(e) => setSelectedAdvertiser(e.target.value)}
-        style={{
-          width: "150px",
-          padding: "0.75rem",
-          border: "1px solid #ccc",
-          borderRadius: "6px",
-          marginRight: "0.5rem",
-        }}
-      >
-        <option value="All">All Advertisers</option>
-        <option value="Nike">Nike</option>
-        <option value="Apple">Apple</option>
-        <option value="Microsoft">Microsoft</option>
-      </select>
-      {/* Update Filters Button with success message */}
-      <button
-        style={{
-          padding: "0.75rem 1.5rem",
-          border: "none",
-          borderRadius: "6px",
-          cursor: "pointer",
-          backgroundColor: successMessage ? "green" : "#007bff",
-          color: successMessage ? "white" : "white",
-          transition: "all 0.3s ease",
-        }}
-        onClick={() => {
-          setSearchParams({
-            query,
-            country: selectedCountry,
-            dateRange: newDateRange,
-            advertiser: selectedAdvertiser,
-          });
-          setSuccessMessage(true);
-        }}
-      >
-        {successMessage ? "Filters Updated!" : "Update Filters"}
-      </button>
+        {/* Country Dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Select
+            options={[
+              { value: "All Countries", label: "All Countries" },
+              { value: "United States", label: "United States" },
+              { value: "United Kingdom", label: "United Kingdom" },
+              { value: "Canada", label: "Canada" },
+              { value: "Australia", label: "Australia" },
+            ]}
+            value={{ value: selectedCountry, label: selectedCountry }}
+            onChange={(selectedOption) =>
+              setSelectedCountry(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Date Range Dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Select
+            options={[
+              { value: "All Time", label: "All Time" },
+              { value: "Last 7 Days", label: "Last 7 Days" },
+              { value: "Last 30 Days", label: "Last 30 Days" },
+              { value: "Last 90 Days", label: "Last 90 Days" },
+            ]}
+            value={{ value: newDateRange, label: newDateRange }}
+            onChange={(selectedOption) => setDateRange(selectedOption.value)}
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Advertiser Dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Select
+            options={[
+              { value: "All Advertisers", label: "All Advertisers" },
+              { value: "Nike", label: "Nike" },
+              { value: "Apple", label: "Apple" },
+              { value: "Microsoft", label: "Microsoft" },
+            ]}
+            value={{ value: selectedAdvertiser, label: selectedAdvertiser }}
+            onChange={(selectedOption) =>
+              setSelectedAdvertiser(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Update Filters Button with success message */}
+        <button
+          style={{
+            padding: "1rem 1.5rem",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            backgroundColor: successMessage ? "green" : "#007bff",
+            color: successMessage ? "white" : "white",
+            transition: "all 0.3s ease",
+          }}
+          onClick={() => {
+            setSearchParams({
+              query,
+              country: selectedCountry,
+              dateRange: newDateRange,
+              advertiser: selectedAdvertiser,
+            });
+            setSuccessMessage(true);
+          }}
+        >
+          {successMessage ? "Filters Updated!" : "Update Filters"}
+        </button>
+      </div>
       <h4> Total Ads: 123 | Total Spent: $00,000 | Top Advertiser: Nike </h4>
       {/* Placeholder for visualizations */}
       <div
@@ -178,7 +187,6 @@ export default function ResultsPage() {
       >
         Tableau dashboard placeholder (TREND CHART)
       </div>
-      {/* Placeholder for ads list */}
       {/* Frontend will deal with sorting the ads based on amount spent and reach, backend will just send the data in a random order */}
       <h4> Ads List </h4>
       <label>Sorting Options: </label>
