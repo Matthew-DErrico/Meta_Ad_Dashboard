@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Select from "react-select";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { filterDropdownStyle } from "../styles/selectStyles";
 
 export default function ResultsPage() {
@@ -12,10 +14,20 @@ export default function ResultsPage() {
   const [newQuery, setNewQuery] = useState(query);
   const country = searchParams.get("country") || "All Countries";
   const [selectedCountry, setSelectedCountry] = useState(country);
-  const dateRange = searchParams.get("dateRange") || "All Time";
-  const [newDateRange, setDateRange] = useState(dateRange);
   const advertiser = searchParams.get("advertiser") || "All Advertisers";
   const [selectedAdvertiser, setSelectedAdvertiser] = useState(advertiser);
+
+  {
+    /* Data Range variables */
+  }
+  const startDateParam = searchParams.get("startDate");
+  const endDateParam = searchParams.get("endDate");
+  const [startDate, setStartDate] = useState(
+    startDateParam ? new Date(startDateParam) : null,
+  );
+  const [endDate, setEndDate] = useState(
+    endDateParam ? new Date(endDateParam) : null,
+  );
 
   {
     /* filter button success message */
@@ -37,7 +49,7 @@ export default function ResultsPage() {
     if (successMessage) {
       const timer = setTimeout(() => {
         setSuccessMessage(false);
-      }, 3000);
+      }, 1500);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
@@ -47,18 +59,20 @@ export default function ResultsPage() {
   }
   const handleNewSearch = (e) => {
     e.preventDefault();
-    setSearchParams({
+    const params = {
       query: newQuery,
       country: selectedCountry,
-      dateRange: newDateRange,
       advertiser: selectedAdvertiser,
-    });
+    };
+    if (startDate) params.startDate = startDate.toISOString().split("T")[0];
+    if (endDate) params.endDate = endDate.toISOString().split("T")[0];
+    setSearchParams(params);
   };
 
   return (
     <div>
       <h1>Results Dashboard</h1>
-      {/* Get topic from search bar from FrontPage and display it here */}
+      {/* Search Bar */}
       <form onSubmit={handleNewSearch} style={{ marginBottom: "1rem" }}>
         <label>Topic: </label>
         <input
@@ -89,9 +103,7 @@ export default function ResultsPage() {
           Search
         </button>
       </form>
-      {/* For advertiser, it will be a drop down with options of advertisers in the database for the specifc topic.
-       There should a search feature at the top of the dropdown */}
-      {/* Filters Section with Country, Date Range, and Advertiser dropdowns */}
+      {/* Filters Section with Country, Date Range, Advertiser dropdowns, and Filter Update Button */}
       <div
         style={{
           display: "flex",
@@ -119,19 +131,46 @@ export default function ResultsPage() {
             styles={filterDropdownStyle}
           />
         </div>
-        {/* Date Range Dropdown with Searchable Options */}
+        {/* Date Range Calendar Picker */}
+        <style>{`
+        .custom-datepicker-wrapper .react-datepicker-wrapper {
+          width: 200px;
+        }
+        .custom-datepicker-wrapper .react-datepicker__input-container input {
+          padding: 0.90rem;
+          width: 175px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .custom-datepicker-wrapper .react-datepicker__input-container input:focus {
+          outline: none;
+          border-color: #2684FF;
+          box-shadow: 0 0 0 1px #2684FF;
+        }
+      `}</style>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Select
-            options={[
-              { value: "All Time", label: "All Time" },
-              { value: "Last 7 Days", label: "Last 7 Days" },
-              { value: "Last 30 Days", label: "Last 30 Days" },
-              { value: "Last 90 Days", label: "Last 90 Days" },
-            ]}
-            value={{ value: newDateRange, label: newDateRange }}
-            onChange={(selectedOption) => setDateRange(selectedOption.value)}
-            styles={filterDropdownStyle}
-          />
+          <div className="custom-datepicker-wrapper">
+            <DatePicker
+              selectsRange={true}
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(update) => {
+                const [start, end] = update;
+                setStartDate(start);
+                setEndDate(end);
+              }}
+              isClearable={true}
+              placeholderText="Select date range"
+              dateFormat="MM/dd/yyyy"
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+              yearDropdownItemNumber={15}
+              scrollableYearDropdown
+            />
+          </div>
         </div>
         {/* Advertiser Dropdown with Searchable Options */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -161,12 +200,15 @@ export default function ResultsPage() {
             transition: "all 0.3s ease",
           }}
           onClick={() => {
-            setSearchParams({
+            const params = {
               query,
               country: selectedCountry,
-              dateRange: newDateRange,
               advertiser: selectedAdvertiser,
-            });
+            };
+            if (startDate)
+              params.startDate = startDate.toISOString().split("T")[0];
+            if (endDate) params.endDate = endDate.toISOString().split("T")[0];
+            setSearchParams(params);
             setSuccessMessage(true);
           }}
         >

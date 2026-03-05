@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { filterDropdownStyle } from "../styles/selectStyles";
 
 export default function FrontPage() {
   const [query, setQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("All Countries");
-  const [dateRangeFilter, setDateRangeFilter] = useState("All Time");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [advertiserFilter, setAdvertiserFilter] = useState("All Advertisers");
   const navigate = useNavigate();
 
@@ -18,8 +21,11 @@ export default function FrontPage() {
     const searchParams = new URLSearchParams();
     if (query) searchParams.append("query", query);
     if (countryFilter) searchParams.append("country", countryFilter);
-    if (dateRangeFilter) searchParams.append("dateRange", dateRangeFilter);
     if (advertiserFilter) searchParams.append("advertiser", advertiserFilter);
+    if (startDate)
+      searchParams.append("startDate", startDate.toISOString().split("T")[0]);
+    if (endDate)
+      searchParams.append("endDate", endDate.toISOString().split("T")[0]);
     navigate(`/results?${searchParams.toString()}`);
   };
 
@@ -62,22 +68,47 @@ export default function FrontPage() {
             styles={filterDropdownStyle}
           />
         </div>
-        {/* Date Range Dropdown with Searchable Options */}
+        {/* Date Range Calendar Picker */}
+        <style>{`
+        .custom-datepicker-wrapper .react-datepicker-wrapper {
+          width: 200px;
+        }
+        .custom-datepicker-wrapper .react-datepicker__input-container input {
+          padding: 0.90rem;
+          width: 175px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .custom-datepicker-wrapper .react-datepicker__input-container input:focus {
+          outline: none;
+          border-color: #2684FF;
+          box-shadow: 0 0 0 1px #2684FF;
+        }
+      `}</style>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <label>Date Range: </label>
-          <Select
-            options={[
-              { value: "All Time", label: "All Time" },
-              { value: "Last 7 Days", label: "Last 7 Days" },
-              { value: "Last 30 Days", label: "Last 30 Days" },
-              { value: "Last 90 Days", label: "Last 90 Days" },
-            ]}
-            placeholder="All Time"
-            onChange={(selectedOption) =>
-              setDateRangeFilter(selectedOption.value)
-            }
-            styles={filterDropdownStyle}
-          />
+          <div className="custom-datepicker-wrapper">
+            <DatePicker
+              selectsRange={true}
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(update) => {
+                const [start, end] = update;
+                setStartDate(start);
+                setEndDate(end);
+              }}
+              isClearable={true}
+              placeholderText="Select date range"
+              dateFormat="MM/dd/yyyy"
+              showMonthDropdown
+              showYearDropdown
+              dropdownMode="select"
+              yearDropdownItemNumber={15}
+              scrollableYearDropdown
+            />
+          </div>
         </div>
         {/* Advertiser Dropdown with Searchable Options */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>

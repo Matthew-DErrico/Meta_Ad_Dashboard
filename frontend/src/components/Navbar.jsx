@@ -11,7 +11,17 @@ export default function Navbar() {
         borderBottom: "1px solid #ddd",
       }}
     >
-      <h2 style={{ margin: 0 }}>Meta Ad Dashboard</h2>
+      <Link
+        style={{
+          fontSize: "1.5rem",
+          fontWeight: "bold",
+          textDecoration: "none",
+          color: "inherit",
+        }}
+        to="/"
+      >
+        Meta Ad Dashboard
+      </Link>
 
       <div style={{ display: "flex", gap: "1rem" }}>
         <Link to="/">Home</Link>
