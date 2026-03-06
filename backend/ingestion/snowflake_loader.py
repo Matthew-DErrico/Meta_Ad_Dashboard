@@ -1,10 +1,9 @@
 import os
 import snowflake.connector
 from dotenv import load_dotenv
-from datetime import datetime, timezone
+from datetime import date
 
 load_dotenv()
-
 
 def get_connection():
     return snowflake.connector.connect(
@@ -16,31 +15,52 @@ def get_connection():
         schema=os.getenv("SNOWFLAKE_SCHEMA"),
     )
 
-
 def insert_ads(ads):
+    """
+    Inserts a list of ads into Snowflake FACT_ADS table.
+    PUBLISHER_PLATFORMS is omitted (set to NULL) to bypass type issues.
+    """
     conn = get_connection()
     cursor = conn.cursor()
 
     try:
         insert_query = """
-            INSERT INTO FACT_ADS (AD_ID, PAGE_ID, START_DATE, SNAPSHOT_URL)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO FACT_ADS (
+                AD_ID, PAGE_ID, PAGE_NAME, AD_CREATION_TIME,
+                START_DATE, END_DATE, AD_TEXT, LINK_TITLE,
+                LINK_DESCRIPTION, LINK_CAPTION,
+                SNAPSHOT_URL, INGESTION_DATE
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
-        for ad in ads:
-            cursor.execute(
-                insert_query,
-                (
-                    ad["ad_id"],
-                    ad["page_id"],
-                    ad["start_date"],
-                    ad["snapshot_url"],
-                ),
-            )
+        today = date.today()
+        records = []
 
+        for ad in ads:
+            record = (
+                ad['ad_id'],
+                ad['page_id'],
+                ad['page_name'],
+                ad['ad_creation_time'],
+                ad['start_date'],
+                ad['end_date'],
+                ad['ad_text'],
+                ad['link_title'],
+                ad['link_description'],
+                ad['link_caption'],
+                ad['snapshot_url'],
+                today
+            )
+            records.append(record)
+
+        cursor.executemany(insert_query, records)
         conn.commit()
         print(f"Inserted {len(ads)} ads into Snowflake.")
 
+    except Exception as e:
+        print(f"Error during insertion: {e}")
+        raise
     finally:
         cursor.close()
         conn.close()
