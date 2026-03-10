@@ -49,7 +49,7 @@ def get_overview():
             SUM(ad_spend) AS total_spend,
             SUM(impressions) AS total_impressions,
             COUNT(DISTINCT advertiser_id) AS advertiser_count
-        FROM Fact_Ad_Performance
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
     """
 
     rows = sf.run_query(query)
@@ -72,7 +72,7 @@ def top_advertisers(
         SELECT
             a.advertiser_name,
             SUM(f.ad_spend)
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
@@ -112,7 +112,7 @@ def spend_trend(
         SELECT
             d.date,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Date d ON f.date_id = d.date_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
@@ -149,7 +149,7 @@ def geography_breakdown(
         SELECT
             g.geography_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
         LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
@@ -175,18 +175,29 @@ def platform_breakdown(
         keyword=keyword
     )
 
-    query = f"""
+    '''query = f"""
         SELECT
             p.platform_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Platform p ON f.platform_id = p.platform_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
         LEFT JOIN Dim_Date d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY p.platform_name
-    """
+    """'''
+
+    # Modified query for current schema
+    query = """
+            SELECT
+                VALUE::STRING AS PLATFORM,
+                COUNT(*) AS TOTAL_ADS
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS,
+            LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS)
+            GROUP BY PLATFORM
+            ORDER BY TOTAL_ADS DESC
+        """
 
     rows = sf.run_query(query, params)
 
@@ -211,7 +222,7 @@ def top_campaigns(
         SELECT
             c.campaign_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
@@ -237,18 +248,30 @@ def creative_breakdown(
         platform
     )
 
-    query = f"""
+    '''query = f"""
         SELECT
             c.creative_type,
             COUNT(*) AS ad_count
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Ad_Creative c ON f.creative_id = c.creative_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
         LEFT JOIN Dim_Date d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY c.creative_type
-    """
+    """'''
+
+    # Modified query for current schema
+    query = """
+            SELECT
+                CASE
+                    WHEN LINK_TITLE IS NOT NULL THEN 'LINK_AD'
+                    ELSE 'TEXT_AD'
+                END AS AD_TYPE,
+                COUNT(*) AS TOTAL
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS
+            GROUP BY AD_TYPE
+        """
 
     rows = sf.run_query(query, params)
 

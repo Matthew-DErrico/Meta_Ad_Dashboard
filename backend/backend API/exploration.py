@@ -21,12 +21,12 @@ def search_ads(
         platform
     )
 
-    query = f"""
+    '''query = f"""
         SELECT
             a.advertiser_name,
             c.campaign_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
         JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
@@ -45,6 +45,37 @@ def search_ads(
 
     return [
         {"advertiser": r[0], "campaign": r[1], "total_spend": float(r[2])}
+        for r in rows
+    ]'''
+
+    # modified query for current schema
+    query = """
+            SELECT
+                AD_ID,
+                PAGE_NAME,
+                START_DATE,
+                AD_TEXT,
+                SNAPSHOT_URL
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS
+            WHERE
+                LOWER(AD_TEXT) LIKE LOWER(%(keyword)s)
+                OR LOWER(PAGE_NAME) LIKE LOWER(%(keyword)s)
+                OR LOWER(LINK_TITLE) LIKE LOWER(%(keyword)s)
+            LIMIT 50
+        """
+
+    rows = sf.run_query(query, {
+        "keyword": f"%{keyword}%"
+    })
+
+    return [
+        {
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "snapshot_url": r[4]
+        }
         for r in rows
     ]
 
@@ -68,7 +99,7 @@ def advertiser_details(
             SUM(f.ad_spend) AS total_spend,
             SUM(f.impressions) AS total_impressions,
             COUNT(DISTINCT f.campaign_id) AS campaign_count
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
         LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
         LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
@@ -99,7 +130,7 @@ def campaign_details(campaign_id: int):
             SUM(f.impressions) AS impressions,
             MIN(d.date) AS start_date,
             MAX(d.date) AS end_date
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
         JOIN Dim_Date d ON f.date_id = d.date_id
         WHERE f.campaign_id = %(campaign_id)s
@@ -124,6 +155,7 @@ def ads_list(
     campaign_id: Optional[int] = None,
     advertiser_id: Optional[int] = None,
     keyword: Optional[str] = None,
+    limit: int = 100
 ):
 
     conditions = []
@@ -147,14 +179,14 @@ def ads_list(
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
 
-    query = f"""
+    '''query = f"""
         SELECT
             a.advertiser_name,
             c.campaign_name,
             cre.creative_type,
             f.ad_spend,
             f.impressions
-        FROM Fact_Ad_Performance f
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
         JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
         LEFT JOIN Dim_Ad_Creative cre ON f.creative_id = cre.creative_id
@@ -171,6 +203,31 @@ def ads_list(
             "creative_type": r[2],
             "spend": float(r[3]),
             "impressions": int(r[4]),
+        }
+        for r in rows
+    ]'''
+
+    # modified query for current schema
+    query = """
+            SELECT
+                AD_ID,
+                PAGE_NAME,
+                START_DATE,
+                AD_TEXT,
+                SNAPSHOT_URL
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS
+            ORDER BY START_DATE DESC
+            LIMIT %(limit)s
+        """
+    rows = sf.run_query(query, {"limit": limit})
+
+    return [
+        {
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "snapshot_url": r[4]
         }
         for r in rows
     ]
