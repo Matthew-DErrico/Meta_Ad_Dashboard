@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchFilters } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -12,6 +13,20 @@ export default function FrontPage() {
   const [endDate, setEndDate] = useState(null);
   const [advertiserFilter, setAdvertiserFilter] = useState("All Advertisers");
   const navigate = useNavigate();
+  const [geographies, setGeographies] = useState([]);
+
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const filters = await fetchFilters();
+        setGeographies(filters.geographies);
+      } catch (error) {
+        console.error("Error loading filters:", error);
+      }
+    };
+
+    loadFilters();
+  }, []);
 
   // Placeholder search handler
   const handleSearch = (e) => {
@@ -55,10 +70,7 @@ export default function FrontPage() {
           <Select
             options={[
               { value: "All Countries", label: "All Countries" },
-              { value: "United States", label: "United States" },
-              { value: "United Kingdom", label: "United Kingdom" },
-              { value: "Canada", label: "Canada" },
-              { value: "Australia", label: "Australia" },
+              ...geographies.map((geo) => ({ value: geo, label: geo })),
             ]}
             isSearchable={true}
             placeholder="All Countries"
