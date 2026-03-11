@@ -2,11 +2,13 @@ from fastapi import APIRouter
 from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
+from sql_service import SQLiteService
 from schemas import OverviewResponse
 from schemas import AdvertiserSpend
 
 analytics_router = APIRouter()
-sf = SnowflakeService()
+#sf = SnowflakeService()
+sf = SQLiteService()
 
 def build_filters(geography=None, platform=None, keyword=None, start_date=None, end_date=None):
 
@@ -37,7 +39,7 @@ def build_filters(geography=None, platform=None, keyword=None, start_date=None, 
 
     where_clause = ""
     if conditions:
-        where_clause = "Where" + " AND ".join(conditions)
+        where_clause = "Where " + " AND ".join(conditions)
 
     return where_clause, params
 
@@ -49,7 +51,7 @@ def get_overview():
             SUM(ad_spend) AS total_spend,
             SUM(impressions) AS total_impressions,
             COUNT(DISTINCT advertiser_id) AS advertiser_count
-        FROM Fact_Ad_Performance
+        FROM FACT_ADS
     """
 
     rows = sf.run_query(query)
@@ -72,10 +74,10 @@ def top_advertisers(
         SELECT
             a.advertiser_name,
             SUM(f.ad_spend)
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
+        FROM FACT_ADS f
+        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
         {where_clause}
         GROUP BY a.advertiser_name
         ORDER BY SUM(f.ad_spend) DESC
@@ -112,11 +114,11 @@ def spend_trend(
         SELECT
             d.date,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Date d ON f.date_id = d.date_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
+        FROM FACT_ADS f
+        JOIN DIM_DATE d ON f.date_id = d.date_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
         {where_clause}
         GROUP BY d.date
         ORDER BY d.date
@@ -149,11 +151,11 @@ def geography_breakdown(
         SELECT
             g.geography_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+        FROM FACT_ADS f
+        JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY g.geography_name
         ORDER BY total_spend DESC
@@ -179,11 +181,11 @@ def platform_breakdown(
         SELECT
             p.platform_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+        FROM FACT_ADS f
+        JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY p.platform_name
     """
@@ -211,11 +213,11 @@ def top_campaigns(
         SELECT
             c.campaign_name,
             SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+        FROM FACT_ADS f
+        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY c.campaign_name
         ORDER BY total_spend DESC
@@ -241,11 +243,11 @@ def creative_breakdown(
         SELECT
             c.creative_type,
             COUNT(*) AS ad_count
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Ad_Creative c ON f.creative_id = c.creative_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+        FROM FACT_ADS f
+        JOIN DIM_AD_CREATIVE c ON f.creative_id = c.creative_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
         {where_clause}
         GROUP BY c.creative_type
     """

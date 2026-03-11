@@ -2,12 +2,14 @@ from fastapi import APIRouter
 from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
+from sql_service import SQLiteService
 from analytics import build_filters
 from schemas import OverviewResponse
 from schemas import AdvertiserSpend
 
 exploration_router = APIRouter()
-sf = SnowflakeService()
+#sf = SnowflakeService()
+sf = SQLiteService()
 
 @exploration_router.get("/search")
 def search_ads(
@@ -16,7 +18,7 @@ def search_ads(
     platform: Optional[str] = None,
 ):
 
-    filter_clause = build_filters(
+    where_clause, params = build_filters(
         geography,
         platform
     )
@@ -25,26 +27,38 @@ def search_ads(
         SELECT
             a.advertiser_name,
             c.campaign_name,
-            SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+            SUM(f.ad_spend) AS total_spend,
+            SUM(f.impressions) AS total_impressions,
+            f.start_date,
+            f.end_date
+        FROM FACT_ADS f
+        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
+        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
+        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
         WHERE (
-            LOWER(a.advertiser_name) LIKE LOWER(%(keyword)s)
-            OR LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)
+            LOWER(a.advertiser_name) LIKE LOWER(:keyword)
+            OR LOWER(c.campaign_name) LIKE LOWER(:keyword)
         )
-        {"AND " + filter_clause.replace("WHERE ", "") if filter_clause else ""}
+        {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
         GROUP BY a.advertiser_name, c.campaign_name
         LIMIT 25
     """
 
-    rows = sf.run_query(query, {"keyword": f"%{keyword}%"})
+    params["keyword"] = f"%{keyword}%"
+
+    rows = sf.run_query(query, params)
 
     return [
-        {"advertiser": r[0], "campaign": r[1], "total_spend": float(r[2])}
+        {
+            "advertiser": r[0],
+            "campaign": r[1],
+            "total_spend": float(r[2]),
+            "total_impressions": float(r[3]),
+            "start_date": r[4],
+            "end_date": r[5]
+        }
         for r in rows
     ]
 
@@ -68,10 +82,10 @@ def advertiser_details(
             SUM(f.ad_spend) AS total_spend,
             SUM(f.impressions) AS total_impressions,
             COUNT(DISTINCT f.campaign_id) AS campaign_count
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
+        FROM FACT_ADS f
+        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
+        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
+        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
         WHERE f.advertiser_id = %(advertiser_id)s
         {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
         GROUP BY a.advertiser_name
@@ -99,9 +113,9 @@ def campaign_details(campaign_id: int):
             SUM(f.impressions) AS impressions,
             MIN(d.date) AS start_date,
             MAX(d.date) AS end_date
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        JOIN Dim_Date d ON f.date_id = d.date_id
+        FROM FACT_ADS f
+        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        JOIN DIM_DATE d ON f.date_id = d.date_id
         WHERE f.campaign_id = %(campaign_id)s
         GROUP BY c.campaign_name
     """
@@ -154,10 +168,10 @@ def ads_list(
             cre.creative_type,
             f.ad_spend,
             f.impressions
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Ad_Creative cre ON f.creative_id = cre.creative_id
+        FROM FACT_ADS f
+        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
+        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
+        LEFT JOIN DIM_AD_CREATIVE cre ON f.creative_id = cre.creative_id
         {where_clause}
         LIMIT 100
     """
