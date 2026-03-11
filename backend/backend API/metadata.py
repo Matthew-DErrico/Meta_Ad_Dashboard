@@ -8,17 +8,21 @@ from schemas import AdvertiserSpend
 
 metadata_router = APIRouter()
 #sf = SnowflakeService()
-sf = SnowflakeService()
+sf = SQLiteService()
+
 @metadata_router.get("/filters")
 def get_filters():
 
     geo_query = "SELECT DISTINCT geography_name FROM DIM_GEOGRAPHY"
     platform_query = "SELECT DISTINCT platform_name FROM DIM_PLATFORM"
+    advertiser_query = "SELECT DISTINCT advertiser_name FROM DIM_ADVERTISER"
 
     geos = sf.run_query(geo_query)
     platforms = sf.run_query(platform_query)
+    ads = sf.run_query(advertiser_query)
 
     return {
         "geographies": [g[0] for g in geos],
         "platforms": [p[0] for p in platforms],
+        "advertisers": [a[0] for a in ads],
     }
