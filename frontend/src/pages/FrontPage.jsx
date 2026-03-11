@@ -14,12 +14,15 @@ export default function FrontPage() {
   const [advertiserFilter, setAdvertiserFilter] = useState("All Advertisers");
   const navigate = useNavigate();
   const [geographies, setGeographies] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [platformFilter, setPlatformFilter] = useState("All Platforms");
 
   useEffect(() => {
     const loadFilters = async () => {
       try {
         const filters = await fetchFilters();
         setGeographies(filters.geographies);
+        setPlatforms(filters.platforms);
       } catch (error) {
         console.error("Error loading filters:", error);
       }
@@ -80,6 +83,25 @@ export default function FrontPage() {
             styles={filterDropdownStyle}
           />
         </div>
+        {/* Platform dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label>Platform: </label>
+          <Select
+            options={[
+              { value: "All Platforms", label: "All Platforms" },
+              ...platforms.map((platform) => ({
+                value: platform,
+                label: platform,
+              })),
+            ]}
+            isSearchable={true}
+            placeholder="All Platforms"
+            onChange={(selectedOption) =>
+              setPlatformFilter(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
         {/* Date Range Calendar Picker */}
         <style>{`
         .custom-datepicker-wrapper .react-datepicker-wrapper {
@@ -132,6 +154,7 @@ export default function FrontPage() {
               { value: "Apple", label: "Apple" },
               { value: "Microsoft", label: "Microsoft" },
             ]}
+            isSearchable={true}
             placeholder="All Advertisers"
             onChange={(selectedOption) =>
               setAdvertiserFilter(selectedOption.value)

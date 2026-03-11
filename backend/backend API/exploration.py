@@ -54,10 +54,11 @@ def search_ads(
         {
             "advertiser": r[0],
             "campaign": r[1],
-            "total_spend": float(r[2]),
-            "total_impressions": float(r[3]),
-            "start_date": r[4],
-            "end_date": r[5]
+            "geography": r[2],
+            "total_spend": float(r[3]),
+            "total_impressions": float(r[4]),
+            "start_date": r[5],
+            "end_date": r[6]
         }
         for r in rows
     ]

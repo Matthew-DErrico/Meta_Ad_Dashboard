@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { fetchSearchResults } from "../services/api";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -68,6 +69,34 @@ export default function ResultsPage() {
     if (endDate) params.endDate = endDate.toISOString().split("T")[0];
     setSearchParams(params);
   };
+
+  {
+    /* State variables for search results and loading state */
+  }
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!query) return;
+
+      setLoading(true);
+      try {
+        const data = await fetchSearchResults(
+          query,
+          selectedCountry !== "All Countries" ? selectedCountry : null,
+          selectedAdvertiser !== "All Advertisers" ? selectedAdvertiser : null,
+        );
+        setResults(data);
+      } catch (error) {
+        console.error("Error fetching search results:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    performSearch();
+  }, [query, selectedCountry, selectedAdvertiser]);
 
   return (
     <div>
@@ -328,6 +357,15 @@ export default function ResultsPage() {
                   borderBottom: "2px solid #ddd",
                 }}
               >
+                Geography
+              </th>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
                 Spent
               </th>
               <th
@@ -342,24 +380,43 @@ export default function ResultsPage() {
             </tr>
           </thead>
           <tbody>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "1rem" }}>Ad 1</td>
-              <td style={{ padding: "1rem" }}>Nike</td>
-              <td style={{ padding: "1rem" }}>$5,000</td>
-              <td style={{ padding: "1rem" }}>1M</td>
-            </tr>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "1rem" }}>Ad 2</td>
-              <td style={{ padding: "1rem" }}>Nike</td>
-              <td style={{ padding: "1rem" }}>$3,000</td>
-              <td style={{ padding: "1rem" }}>500K</td>
-            </tr>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "1rem" }}>Ad 3</td>
-              <td style={{ padding: "1rem" }}>Nike</td>
-              <td style={{ padding: "1rem" }}>$2,000</td>
-              <td style={{ padding: "1rem" }}>300K</td>
-            </tr>
+            {loading && (
+              <tr>
+                <td
+                  colSpan="5"
+                  style={{ textAlign: "center", padding: "2rem" }}
+                >
+                  Loading results...
+                </td>
+              </tr>
+            )}
+
+            {!loading && results.length === 0 && (
+              <tr>
+                <td
+                  colSpan="5"
+                  style={{ textAlign: "center", padding: "2rem" }}
+                >
+                  No results found. Try a different search term.
+                </td>
+              </tr>
+            )}
+
+            {!loading &&
+              results.length > 0 &&
+              results.map((ad, index) => (
+                <tr key={index} style={{ borderBottom: "1px solid #eee" }}>
+                  <td style={{ padding: "1rem" }}>{ad.campaign}</td>
+                  <td style={{ padding: "1rem" }}>{ad.advertiser}</td>
+                  <td style={{ padding: "1rem" }}>{ad.geography}</td>
+                  <td style={{ padding: "1rem" }}>
+                    ${ad.total_spend?.toLocaleString()}
+                  </td>
+                  <td style={{ padding: "1rem" }}>
+                    {ad.total_impressions?.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

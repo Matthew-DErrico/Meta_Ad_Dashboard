@@ -8,7 +8,7 @@ from schemas import AdvertiserSpend
 
 metadata_router = APIRouter()
 #sf = SnowflakeService()
-sf = SnowflakeService()
+sf = SQLiteService()
 @metadata_router.get("/filters")
 def get_filters():
 

@@ -1,5 +1,11 @@
 import os
 
+# for temporary SQLite database
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+SQLITE_DB_PATH = BASE_DIR / "temporary database" / "demo_ads.db"
+
 SNOWFLAKE_CONFIG = {
     "user": os.getenv("SNOWFLAKE_USER"),
     "password": os.getenv("SNOWFLAKE_PASSWORD"),
