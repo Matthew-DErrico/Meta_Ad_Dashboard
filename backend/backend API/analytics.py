@@ -39,7 +39,7 @@ def build_filters(geography=None, platform=None, keyword=None, start_date=None, 
 
     where_clause = ""
     if conditions:
-        where_clause = "Where " + " AND ".join(conditions)
+        where_clause = "WHERE " + " AND ".join(conditions)
 
     return where_clause, params
 

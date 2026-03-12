@@ -27,6 +27,8 @@ def search_ads(
         SELECT
             a.advertiser_name,
             c.campaign_name,
+            g.geography_name,
+            p.platform_name,
             SUM(f.ad_spend) AS total_spend,
             SUM(f.impressions) AS total_impressions,
             f.start_date,
@@ -42,7 +44,7 @@ def search_ads(
             OR LOWER(c.campaign_name) LIKE LOWER(:keyword)
         )
         {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
-        GROUP BY a.advertiser_name, c.campaign_name
+        GROUP BY a.advertiser_name, c.campaign_name, g.geography_name, p.platform_name
         LIMIT 25
     """
 
@@ -55,10 +57,11 @@ def search_ads(
             "advertiser": r[0],
             "campaign": r[1],
             "geography": r[2],
-            "total_spend": float(r[3]),
-            "total_impressions": float(r[4]),
-            "start_date": r[5],
-            "end_date": r[6]
+            "platform": r[3],
+            "total_spend": float(r[4]),
+            "total_impressions": float(r[5]),
+            "start_date": r[6],
+            "end_date": r[7]
         }
         for r in rows
     ]
