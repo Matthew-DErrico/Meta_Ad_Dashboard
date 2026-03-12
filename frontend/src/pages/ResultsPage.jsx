@@ -16,7 +16,10 @@ export default function ResultsPage() {
   const [selectedCountry, setSelectedCountry] = useState(country);
   const advertiser = searchParams.get("advertiser") || "All Advertisers";
   const [selectedAdvertiser, setSelectedAdvertiser] = useState(advertiser);
-
+  {
+    /* Sidebar Variables */
+  }
+  const [selectedAd, setSelectedAd] = useState(null);
   {
     /* Data Range variables */
   }
@@ -342,19 +345,49 @@ export default function ResultsPage() {
             </tr>
           </thead>
           <tbody>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
-              <td style={{ padding: "1rem" }}>Ad 1</td>
-              <td style={{ padding: "1rem" }}>Nike</td>
-              <td style={{ padding: "1rem" }}>$5,000</td>
-              <td style={{ padding: "1rem" }}>1M</td>
-            </tr>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
+          <tr
+              style={{borderBottom: "1px solid #eee", cursor: "pointer"}}
+              onClick={() =>
+                  setSelectedAd({
+                      name: "Ad 1",
+                      advertiser: "Nike",
+                      spent: "$5,000",
+                      reach: "1M",
+                  })
+              }
+          >
+              <td style={{padding: "1rem"}}>Ad 1</td>
+              <td style={{padding: "1rem"}}>Nike</td>
+              <td style={{padding: "1rem"}}>$5,000</td>
+              <td style={{padding: "1rem"}}>1M</td>
+          </tr>
+          <tr
+              style={{borderBottom: "1px solid #eee", cursor: "pointer"}}
+              onClick={() =>
+                  setSelectedAd({
+                      name: "Ad 2",
+                      advertiser: "Nike",
+                  spent: "$3,000",
+                  reach: "500K",
+                })
+              }
+            >
               <td style={{ padding: "1rem" }}>Ad 2</td>
               <td style={{ padding: "1rem" }}>Nike</td>
               <td style={{ padding: "1rem" }}>$3,000</td>
               <td style={{ padding: "1rem" }}>500K</td>
             </tr>
-            <tr style={{ borderBottom: "1px solid #eee" }}>
+            <tr
+              style={{ borderBottom: "1px solid #eee", cursor: "pointer" }}
+              onClick={() =>
+                setSelectedAd({
+                  name: "Ad 3",
+                  advertiser: "Nike",
+                  spent: "$2,000",
+                  reach: "300K",
+                })
+              }
+            >
               <td style={{ padding: "1rem" }}>Ad 3</td>
               <td style={{ padding: "1rem" }}>Nike</td>
               <td style={{ padding: "1rem" }}>$2,000</td>
@@ -363,6 +396,65 @@ export default function ResultsPage() {
           </tbody>
         </table>
       </div>
+      {selectedAd && (
+        <>
+          <div
+            onClick={() => setSelectedAd(null)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0, 0, 0, 0.3)",
+              zIndex: 999,
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: "350px",
+              height: "100vh",
+              backgroundColor: "white",
+              boxShadow: "-4px 0 10px rgba(0,0,0,0.15)",
+              padding: "1.5rem",
+              zIndex: 1000,
+              overflowY: "auto",
+              textAlign: "left",
+            }}
+          >
+            <button
+              onClick={() => setSelectedAd(null)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                float: "right",
+              }}
+            >
+              ×
+            </button>
+
+            <h2>Ad Details</h2>
+            <p>
+              <strong>Ad Name:</strong> {selectedAd.name}
+            </p>
+            <p>
+              <strong>Advertiser:</strong> {selectedAd.advertiser}
+            </p>
+            <p>
+              <strong>Spent:</strong> {selectedAd.spent}
+            </p>
+            <p>
+              <strong>Reach:</strong> {selectedAd.reach}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
