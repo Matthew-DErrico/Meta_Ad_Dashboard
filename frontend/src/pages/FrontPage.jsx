@@ -16,6 +16,7 @@ export default function FrontPage() {
   const [geographies, setGeographies] = useState([]);
   const [platforms, setPlatforms] = useState([]);
   const [platformFilter, setPlatformFilter] = useState("All Platforms");
+  const [advertisers, setAdvertisers] = useState([]);
 
   useEffect(() => {
     const loadFilters = async () => {
@@ -23,6 +24,7 @@ export default function FrontPage() {
         const filters = await fetchFilters();
         setGeographies(filters.geographies);
         setPlatforms(filters.platforms);
+        setAdvertisers(filters.advertisers);
       } catch (error) {
         console.error("Error loading filters:", error);
       }
@@ -150,9 +152,10 @@ export default function FrontPage() {
           <Select
             options={[
               { value: "All Advertisers", label: "All Advertisers" },
-              { value: "Nike", label: "Nike" },
-              { value: "Apple", label: "Apple" },
-              { value: "Microsoft", label: "Microsoft" },
+              ...advertisers.map((advertiser) => ({
+                value: advertiser,
+                label: advertiser,
+              })),
             ]}
             isSearchable={true}
             placeholder="All Advertisers"

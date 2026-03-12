@@ -366,6 +366,15 @@ export default function ResultsPage() {
                   borderBottom: "2px solid #ddd",
                 }}
               >
+                Platform
+              </th>
+              <th
+                style={{
+                  padding: "1rem",
+                  textAlign: "center",
+                  borderBottom: "2px solid #ddd",
+                }}
+              >
                 Spent
               </th>
               <th
@@ -383,7 +392,7 @@ export default function ResultsPage() {
             {loading && (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="6"
                   style={{ textAlign: "center", padding: "2rem" }}
                 >
                   Loading results...
@@ -394,7 +403,7 @@ export default function ResultsPage() {
             {!loading && results.length === 0 && (
               <tr>
                 <td
-                  colSpan="5"
+                  colSpan="6"
                   style={{ textAlign: "center", padding: "2rem" }}
                 >
                   No results found. Try a different search term.
@@ -409,6 +418,7 @@ export default function ResultsPage() {
                   <td style={{ padding: "1rem" }}>{ad.campaign}</td>
                   <td style={{ padding: "1rem" }}>{ad.advertiser}</td>
                   <td style={{ padding: "1rem" }}>{ad.geography}</td>
+                  <td style={{ padding: "1rem" }}>{ad.platform}</td>
                   <td style={{ padding: "1rem" }}>
                     ${ad.total_spend?.toLocaleString()}
                   </td>
