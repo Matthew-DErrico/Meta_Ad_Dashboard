@@ -21,6 +21,10 @@ export default function ResultsPage() {
   const [selectedPlatform, setSelectedPlatform] = useState(platform);
 
   {
+    /* Sidebar Variables */
+  }
+  const [selectedAd, setSelectedAd] = useState(null);
+  {
     /* Data Range variables */
   }
   const startDateParam = searchParams.get("startDate");
@@ -497,7 +501,22 @@ export default function ResultsPage() {
             {!loading &&
               results.length > 0 &&
               sortedResults.map((ad, index) => (
-                <tr key={index} style={{ borderBottom: "1px solid #eee" }}>
+                <tr
+                  key={index}
+                  style={{ borderBottom: "1px solid #eee", cursor: "pointer" }}
+                  onClick={() =>
+                    setSelectedAd({
+                      campaign: ad.campaign,
+                      advertiser: ad.advertiser,
+                      geography: ad.geography,
+                      platform: ad.platform,
+                      spent: Number(ad.total_spend) || 0,
+                      reach: Number(ad.total_impressions) || 0,
+                      startDate: ad.start_date,
+                      endDate: ad.end_date,
+                    })
+                  }
+                >
                   <td style={{ padding: "1rem" }}>{ad.campaign}</td>
                   <td style={{ padding: "1rem" }}>{ad.advertiser}</td>
                   <td style={{ padding: "1rem" }}>{ad.geography}</td>
@@ -513,6 +532,77 @@ export default function ResultsPage() {
           </tbody>
         </table>
       </div>
+      {selectedAd && (
+        <>
+          <div
+            onClick={() => setSelectedAd(null)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: "rgba(0, 0, 0, 0.3)",
+              zIndex: 999,
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              right: 0,
+              width: "350px",
+              height: "100vh",
+              backgroundColor: "white",
+              boxShadow: "-4px 0 10px rgba(0,0,0,0.15)",
+              padding: "1.5rem",
+              zIndex: 1000,
+              overflowY: "auto",
+              textAlign: "left",
+            }}
+          >
+            <button
+              onClick={() => setSelectedAd(null)}
+              style={{
+                border: "none",
+                background: "transparent",
+                fontSize: "1.5rem",
+                cursor: "pointer",
+                float: "right",
+              }}
+            >
+              ×
+            </button>
+
+            <h2>Ad Details</h2>
+            <p>
+              <strong>Ad Name:</strong> {selectedAd.campaign || "N/A"}
+            </p>
+            <p>
+              <strong>Advertiser:</strong> {selectedAd.advertiser || "N/A"}
+            </p>
+            <p>
+              <strong>Geography:</strong> {selectedAd.geography || "N/A"}
+            </p>
+            <p>
+              <strong>Platform:</strong> {selectedAd.platform || "N/A"}
+            </p>
+            <p>
+              <strong>Spent:</strong> ${selectedAd.spent?.toLocaleString()}
+            </p>
+            <p>
+              <strong>Reach:</strong> {selectedAd.reach?.toLocaleString()}
+            </p>
+            <p>
+              <strong>Start Date:</strong> {selectedAd.startDate || "N/A"}
+            </p>
+            <p>
+              <strong>End Date:</strong> {selectedAd.endDate || "N/A"}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 }
