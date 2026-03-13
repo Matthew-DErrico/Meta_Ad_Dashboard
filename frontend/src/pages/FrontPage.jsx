@@ -18,6 +18,9 @@ export default function FrontPage() {
   const [platformFilter, setPlatformFilter] = useState("All Platforms");
   const [advertisers, setAdvertisers] = useState([]);
 
+  {
+    /* Load filter options on component mount (dropdowns) */
+  }
   useEffect(() => {
     const loadFilters = async () => {
       try {
@@ -42,6 +45,7 @@ export default function FrontPage() {
     if (query) searchParams.append("query", query);
     if (countryFilter) searchParams.append("country", countryFilter);
     if (advertiserFilter) searchParams.append("advertiser", advertiserFilter);
+    if (platformFilter) searchParams.append("platform", platformFilter);
     if (startDate)
       searchParams.append("startDate", startDate.toISOString().split("T")[0]);
     if (endDate)

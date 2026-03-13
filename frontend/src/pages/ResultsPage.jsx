@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { fetchSearchResults } from "../services/api";
+import { fetchSearchResults, fetchFilters } from "../services/api";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -17,6 +17,8 @@ export default function ResultsPage() {
   const [selectedCountry, setSelectedCountry] = useState(country);
   const advertiser = searchParams.get("advertiser") || "All Advertisers";
   const [selectedAdvertiser, setSelectedAdvertiser] = useState(advertiser);
+  const platform = searchParams.get("platform") || "All Platforms";
+  const [selectedPlatform, setSelectedPlatform] = useState(platform);
 
   {
     /* Data Range variables */
@@ -64,6 +66,7 @@ export default function ResultsPage() {
       query: newQuery,
       country: selectedCountry,
       advertiser: selectedAdvertiser,
+      platform: selectedPlatform,
     };
     if (startDate) params.startDate = startDate.toISOString().split("T")[0];
     if (endDate) params.endDate = endDate.toISOString().split("T")[0];
@@ -76,6 +79,10 @@ export default function ResultsPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  {
+    /* Effect to perform search whenever query or filters change */
+  }
+
   useEffect(() => {
     const performSearch = async () => {
       if (!query) return;
@@ -85,7 +92,7 @@ export default function ResultsPage() {
         const data = await fetchSearchResults(
           query,
           selectedCountry !== "All Countries" ? selectedCountry : null,
-          selectedAdvertiser !== "All Advertisers" ? selectedAdvertiser : null,
+          selectedPlatform !== "All Platforms" ? selectedPlatform : null,
         );
         setResults(data);
       } catch (error) {
@@ -96,7 +103,62 @@ export default function ResultsPage() {
     };
 
     performSearch();
-  }, [query, selectedCountry, selectedAdvertiser]);
+  }, [query, selectedCountry, selectedPlatform]);
+
+  {
+    /* Load filter options on component mount (dropdowns) */
+  }
+  const [geographies, setGeographies] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [platformFilter, setPlatformFilter] = useState("All Platforms");
+  const [advertisers, setAdvertisers] = useState([]);
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const filters = await fetchFilters();
+        setGeographies(filters.geographies);
+        setPlatforms(filters.platforms);
+        setAdvertisers(filters.advertisers);
+      } catch (error) {
+        console.error("Error loading filters:", error);
+      }
+    };
+
+    loadFilters();
+  }, []);
+
+  {
+    /* Sorting Logic for Spent and Reach (takes current results and just sorts it....)*/
+  }
+
+  const sortedResults = [...results].sort((a, b) => {
+    if (isCheckedSpent) {
+      const aSpend = Number(a.total_spend) || 0;
+      const bSpend = Number(b.total_spend) || 0;
+      return highestToLowest ? bSpend - aSpend : aSpend - bSpend;
+    }
+
+    if (isCheckedReach) {
+      const aReach = Number(a.total_impressions) || 0;
+      const bReach = Number(b.total_impressions) || 0;
+      return highestToLowestReach ? bReach - aReach : aReach - bReach;
+    }
+
+    return 0;
+  });
+
+  {
+    /* Temporary Total Spent and Reach calculation, will need backend to calculate this value and send it to the frontend to get an accurate read,
+     remove after presentation 2 */
+  }
+  const totalSpent = results.reduce((sum, ad) => {
+    const spend = Number(ad.total_spend) || 0;
+    return sum + spend;
+  }, 0);
+  const totalReach = results.reduce((sum, ad) => {
+    const Reach = Number(ad.total_impressions) || 0;
+    return sum + Reach;
+  }, 0);
 
   return (
     <div>
@@ -148,14 +210,28 @@ export default function ResultsPage() {
           <Select
             options={[
               { value: "All Countries", label: "All Countries" },
-              { value: "United States", label: "United States" },
-              { value: "United Kingdom", label: "United Kingdom" },
-              { value: "Canada", label: "Canada" },
-              { value: "Australia", label: "Australia" },
+              ...geographies.map((geo) => ({ value: geo, label: geo })),
             ]}
             value={{ value: selectedCountry, label: selectedCountry }}
             onChange={(selectedOption) =>
               setSelectedCountry(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Platform dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <Select
+            options={[
+              { value: "All Platforms", label: "All Platforms" },
+              ...platforms.map((platform) => ({
+                value: platform,
+                label: platform,
+              })),
+            ]}
+            value={{ value: selectedPlatform, label: selectedPlatform }}
+            onChange={(selectedOption) =>
+              setSelectedPlatform(selectedOption.value)
             }
             styles={filterDropdownStyle}
           />
@@ -244,7 +320,14 @@ export default function ResultsPage() {
           {successMessage ? "Filters Updated!" : "Update Filters"}
         </button>
       </div>
-      <h4> Total Ads: 123 | Total Spent: $00,000 | Top Advertiser: Nike </h4>
+      {/* Temporary summary stats, will need backend to calculate these values and send them to the frontend to get an accurate read
+      as right now it will only get what is actually being presented which has a max of 25.*/}
+      <h4>
+        {" "}
+        Total Ads: {results.length} | Total Spent: $
+        {totalSpent.toLocaleString()} | Total Reach:{" "}
+        {totalReach.toLocaleString()}{" "}
+      </h4>
       {/* Placeholder for visualizations */}
       <div
         style={{
@@ -413,7 +496,7 @@ export default function ResultsPage() {
 
             {!loading &&
               results.length > 0 &&
-              results.map((ad, index) => (
+              sortedResults.map((ad, index) => (
                 <tr key={index} style={{ borderBottom: "1px solid #eee" }}>
                   <td style={{ padding: "1rem" }}>{ad.campaign}</td>
                   <td style={{ padding: "1rem" }}>{ad.advertiser}</td>
