@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchFilters } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -12,6 +13,28 @@ export default function FrontPage() {
   const [endDate, setEndDate] = useState(null);
   const [advertiserFilter, setAdvertiserFilter] = useState("All Advertisers");
   const navigate = useNavigate();
+  const [geographies, setGeographies] = useState([]);
+  const [platforms, setPlatforms] = useState([]);
+  const [platformFilter, setPlatformFilter] = useState("All Platforms");
+  const [advertisers, setAdvertisers] = useState([]);
+
+  {
+    /* Load filter options on component mount (dropdowns) */
+  }
+  useEffect(() => {
+    const loadFilters = async () => {
+      try {
+        const filters = await fetchFilters();
+        setGeographies(filters.geographies);
+        setPlatforms(filters.platforms);
+        setAdvertisers(filters.advertisers);
+      } catch (error) {
+        console.error("Error loading filters:", error);
+      }
+    };
+
+    loadFilters();
+  }, []);
 
   // Placeholder search handler
   const handleSearch = (e) => {
@@ -22,6 +45,7 @@ export default function FrontPage() {
     if (query) searchParams.append("query", query);
     if (countryFilter) searchParams.append("country", countryFilter);
     if (advertiserFilter) searchParams.append("advertiser", advertiserFilter);
+    if (platformFilter) searchParams.append("platform", platformFilter);
     if (startDate)
       searchParams.append("startDate", startDate.toISOString().split("T")[0]);
     if (endDate)
@@ -55,15 +79,31 @@ export default function FrontPage() {
           <Select
             options={[
               { value: "All Countries", label: "All Countries" },
-              { value: "United States", label: "United States" },
-              { value: "United Kingdom", label: "United Kingdom" },
-              { value: "Canada", label: "Canada" },
-              { value: "Australia", label: "Australia" },
+              ...geographies.map((geo) => ({ value: geo, label: geo })),
             ]}
             isSearchable={true}
             placeholder="All Countries"
             onChange={(selectedOption) =>
               setCountryFilter(selectedOption.value)
+            }
+            styles={filterDropdownStyle}
+          />
+        </div>
+        {/* Platform dropdown with Searchable Options */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <label>Platform: </label>
+          <Select
+            options={[
+              { value: "All Platforms", label: "All Platforms" },
+              ...platforms.map((platform) => ({
+                value: platform,
+                label: platform,
+              })),
+            ]}
+            isSearchable={true}
+            placeholder="All Platforms"
+            onChange={(selectedOption) =>
+              setPlatformFilter(selectedOption.value)
             }
             styles={filterDropdownStyle}
           />
@@ -116,10 +156,12 @@ export default function FrontPage() {
           <Select
             options={[
               { value: "All Advertisers", label: "All Advertisers" },
-              { value: "Nike", label: "Nike" },
-              { value: "Apple", label: "Apple" },
-              { value: "Microsoft", label: "Microsoft" },
+              ...advertisers.map((advertiser) => ({
+                value: advertiser,
+                label: advertiser,
+              })),
             ]}
+            isSearchable={true}
             placeholder="All Advertisers"
             onChange={(selectedOption) =>
               setAdvertiserFilter(selectedOption.value)
