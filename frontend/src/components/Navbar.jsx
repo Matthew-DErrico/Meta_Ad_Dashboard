@@ -22,10 +22,6 @@ export default function Navbar() {
       >
         Meta Ad Dashboard
       </Link>
-
-      <div style={{ display: "flex", gap: "1rem" }}>
-        <Link to="/">Home</Link>
-      </div>
     </nav>
   );
 }

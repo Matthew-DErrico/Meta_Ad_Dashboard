@@ -1,0 +1,250 @@
+.results-page {
+  width: 100%;
+}
+
+.results-title {
+  margin-bottom: 0.25rem;
+}
+
+.results-search-form {
+  margin-bottom: 1rem;
+}
+
+.results-topic-label {
+  margin-right: 0.5rem;
+}
+
+.results-search-input {
+  margin-top: 2rem;
+  width: 300px;
+  padding: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-right: 0.5rem;
+  background-color: #ffffff;
+  color: #2c2c2a;
+  outline: none;
+  font-family: "DM Mono", monospace;
+  font-size: 14px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-search-input {
+    border: 1px solid #464141;
+    background-color: #1f1d1d;
+    color: #e8edf7;
+  }
+}
+
+.results-search-button,
+.results-update-button {
+  padding: 1rem 1.5rem;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.results-update-button {
+  transition: all 0.3s ease;
+}
+
+.results-filters-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.results-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.results-page .custom-datepicker-wrapper .react-datepicker-wrapper {
+  width: 200px;
+}
+
+.results-page
+  .custom-datepicker-wrapper
+  .react-datepicker__input-container
+  input {
+  padding: 0.9rem;
+  width: 175px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: "DM Mono", monospace;
+  cursor: pointer;
+  background-color: #ffffff;
+  color: #2c2c2a;
+}
+
+.results-page
+  .custom-datepicker-wrapper
+  .react-datepicker__input-container
+  input:focus {
+  outline: none;
+  border-color: #2684ff;
+  box-shadow: 0 0 0 1px #2684ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-page
+    .custom-datepicker-wrapper
+    .react-datepicker__input-container
+    input {
+    border: 1px solid #464141;
+    background-color: #1f1d1d;
+    color: #e8edf7;
+  }
+}
+
+.results-summary {
+  margin-top: 1.5rem;
+}
+
+.results-chart-placeholder {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  text-align: center;
+  color: #5b6475;
+  background-color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-chart-placeholder {
+    border: 1px solid #2a3445;
+    color: #a8b3c7;
+    background-color: #171d27;
+  }
+}
+
+.results-list-title {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.results-sort-label {
+  margin-right: 0.5rem;
+}
+
+.results-sort-checkbox {
+  margin-right: 0.5rem;
+}
+
+.results-sort-button {
+  color: #ffffff;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.results-table-wrap {
+  margin-top: 2rem;
+  padding: 2rem;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  background-color: #ffffff;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  color: #1e2430;
+}
+
+.results-table-header-row {
+  background-color: #007bff;
+  color: #ffffff;
+}
+
+.results-table-head-cell {
+  padding: 1rem;
+  text-align: center;
+  border-bottom: 2px solid #d8deea;
+}
+
+.results-table-row {
+  border-bottom: 1px solid #d8deea;
+  cursor: pointer;
+}
+
+.results-table-cell {
+  padding: 1rem;
+}
+
+.results-table-empty-cell {
+  text-align: center;
+  padding: 2rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-table-wrap {
+    border: 1px solid #2a3445;
+    background-color: #171d27;
+  }
+
+  .results-table {
+    background-color: #171d27;
+    color: #e8edf7;
+  }
+
+  .results-table-head-cell {
+    border-bottom: 2px solid #2a3445;
+  }
+
+  .results-table-row {
+    border-bottom: 1px solid #2a3445;
+  }
+}
+
+.results-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 999;
+}
+
+.results-side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 350px;
+  height: 100vh;
+  background-color: #ffffff;
+  box-shadow: -4px 0 10px rgba(0, 0, 0, 0.15);
+  padding: 1.5rem;
+  z-index: 1000;
+  overflow-y: auto;
+  text-align: left;
+  color: #1e2430;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-side-panel {
+    background-color: #171d27;
+    color: #e8edf7;
+  }
+}
+
+.results-side-panel-close {
+  border: none;
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  float: right;
+  color: inherit;
+}
