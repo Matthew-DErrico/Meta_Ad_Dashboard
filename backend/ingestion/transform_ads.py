@@ -16,6 +16,24 @@ def normalize_ads(raw_ads):
             else:
                 ad_text = first_body
 
+        # Convert impressions dict → string
+        impressions = ad.get("impressions")
+        impressions_range = None
+        if isinstance(impressions, dict):
+            low = impressions.get("lower_bound")
+            high = impressions.get("upper_bound")
+            if low and high:
+                impressions_range = f"{low}-{high}"
+
+        # convert spend dict → string
+        spend = ad.get("spend")
+        spend_range = None
+        if isinstance(spend, dict):
+            low = spend.get("lower_bound")
+            high = spend.get("upper_bound")
+            if low and high:
+                spend_range = f"{low}-{high}"
+
         normalized.append({
             "ad_id": ad.get("id"),
             "page_id": ad.get("page_id"),
@@ -30,6 +48,9 @@ def normalize_ads(raw_ads):
             "link_title": ad.get("ad_creative_link_title"),
             "link_description": ad.get("ad_creative_link_description"),
             "link_caption": ad.get("ad_creative_link_caption"),
+
+            "impressions_range": impressions_range,
+            "spend_range": spend_range,
 
             "publisher_platforms": ad.get("publisher_platforms") or [],
 

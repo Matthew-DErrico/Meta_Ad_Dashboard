@@ -29,9 +29,10 @@ def insert_ads(ads):
                 AD_ID, PAGE_ID, PAGE_NAME, AD_CREATION_TIME,
                 START_DATE, END_DATE, AD_TEXT, LINK_TITLE,
                 LINK_DESCRIPTION, LINK_CAPTION,
+                IMPRESSIONS_RANGE, SPEND_RANGE,
                 SNAPSHOT_URL, INGESTION_DATE
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
         today = date.today()
@@ -49,6 +50,8 @@ def insert_ads(ads):
                 ad['link_title'],
                 ad['link_description'],
                 ad['link_caption'],
+                ad['impressions_range'],
+                ad['spend_range'],
                 ad['snapshot_url'],
                 today
             )

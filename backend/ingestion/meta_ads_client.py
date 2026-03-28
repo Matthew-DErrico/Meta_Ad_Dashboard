@@ -28,6 +28,8 @@ def fetch_ads(search_term="election", country="US", limit=25, after=None):
             "ad_delivery_stop_time",
             "ad_creative_bodies",
             "publisher_platforms",
+            "impressions",
+            "spend",
             "ad_snapshot_url"
         ])
     }
