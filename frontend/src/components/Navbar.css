@@ -1,0 +1,89 @@
+.app-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #d8deea;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(8px);
+}
+
+.app-navbar-brand {
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-decoration: none;
+  color: inherit;
+  width: fit-content;
+}
+
+.app-navbar-controls {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.app-navbar-search {
+  width: 320px;
+  min-width: 240px;
+  padding: 0.8rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #2c2c2a;
+  outline: none;
+  font-family: "DM Mono", monospace;
+  font-size: 14px;
+}
+
+.app-navbar-datepicker-wrap .react-datepicker-wrapper {
+  width: 200px;
+}
+
+.app-navbar-datepicker-wrap .react-datepicker__input-container input {
+  padding: 0.8rem;
+  width: 175px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: "DM Mono", monospace;
+  cursor: pointer;
+  background-color: #ffffff;
+  color: #2c2c2a;
+}
+
+.app-navbar-datepicker-popper {
+  z-index: 1600 !important;
+}
+
+.app-navbar-apply-button {
+  white-space: nowrap;
+  padding: 0.75rem 1rem;
+  background: #007bff;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-navbar {
+    border-bottom: 1px solid #2a3445;
+    background: rgba(23, 29, 39, 0.94);
+  }
+
+  .app-navbar-search {
+    border: 1px solid #464141;
+    background-color: #1f1d1d;
+    color: #e8edf7;
+  }
+
+  .app-navbar-datepicker-wrap .react-datepicker__input-container input {
+    border: 1px solid #464141;
+    background-color: #1f1d1d;
+    color: #e8edf7;
+  }
+}

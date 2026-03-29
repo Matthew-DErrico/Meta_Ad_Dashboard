@@ -215,7 +215,7 @@
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.3);
-  z-index: 999;
+  z-index: 1700;
 }
 
 .results-side-panel {
@@ -227,7 +227,7 @@
   background-color: #ffffff;
   box-shadow: -4px 0 10px rgba(0, 0, 0, 0.15);
   padding: 1.5rem;
-  z-index: 1000;
+  z-index: 1800;
   overflow-y: auto;
   text-align: left;
   color: #1e2430;

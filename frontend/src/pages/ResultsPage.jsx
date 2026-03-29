@@ -1,106 +1,23 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { fetchSearchResults, fetchFilters } from "../services/api";
-import Select from "react-select";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { getFilterDropdownStyle } from "../styles/selectStyles";
+import { useSearchParams } from "react-router-dom";
+import { fetchSearchResults } from "../services/api";
 import "./FrontPage.css";
 import "./ResultsPage.css";
 
 export default function ResultsPage() {
-  {
-    /* variables for URL parameters and state management for filters */
-  }
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const query = searchParams.get("query") || "";
-  const [newQuery, setNewQuery] = useState(query);
   const country = searchParams.get("country") || "All Countries";
-  const [selectedCountry, setSelectedCountry] = useState(country);
-  const advertiser = searchParams.get("advertiser") || "All Advertisers";
-  const [selectedAdvertiser, setSelectedAdvertiser] = useState(advertiser);
   const platform = searchParams.get("platform") || "All Platforms";
-  const [selectedPlatform, setSelectedPlatform] = useState(platform);
 
-  {
-    /* Sidebar Variables */
-  }
   const [selectedAd, setSelectedAd] = useState(null);
-  {
-    /* Data Range variables */
-  }
-  const startDateParam = searchParams.get("startDate");
-  const endDateParam = searchParams.get("endDate");
-  const [startDate, setStartDate] = useState(
-    startDateParam ? new Date(startDateParam) : null,
-  );
-  const [endDate, setEndDate] = useState(
-    endDateParam ? new Date(endDateParam) : null,
-  );
-
-  {
-    /* filter button success message */
-  }
-  const [successMessage, setSuccessMessage] = useState(false);
-
-  {
-    /*  sort state variables */
-  }
   const [highestToLowest, setHighestToLowest] = useState(false);
   const [isCheckedSpent, setIsCheckedSpent] = useState(false);
   const [isCheckedReach, setIsCheckedReach] = useState(false);
   const [highestToLowestReach, setHighestToLowestReach] = useState(false);
 
-  const [isDark, setIsDark] = useState(
-    window.matchMedia("(prefers-color-scheme: dark)").matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e) => setIsDark(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-
-  const filterDropdownStyle = getFilterDropdownStyle(isDark);
-
-  {
-    /* timer for success message when filters are updated */
-  }
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(false);
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
-
-  {
-    /* Updates URL parameters */
-  }
-  const handleNewSearch = (e) => {
-    e.preventDefault();
-    const params = {
-      query: newQuery,
-      country: selectedCountry,
-      advertiser: selectedAdvertiser,
-      platform: selectedPlatform,
-    };
-    if (startDate) params.startDate = startDate.toISOString().split("T")[0];
-    if (endDate) params.endDate = endDate.toISOString().split("T")[0];
-    setSearchParams(params);
-  };
-
-  {
-    /* State variables for search results and loading state */
-  }
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  {
-    /* Effect to perform search whenever query or filters change */
-  }
 
   useEffect(() => {
     const performSearch = async () => {
@@ -110,8 +27,8 @@ export default function ResultsPage() {
       try {
         const data = await fetchSearchResults(
           query,
-          selectedCountry !== "All Countries" ? selectedCountry : null,
-          selectedPlatform !== "All Platforms" ? selectedPlatform : null,
+          country !== "All Countries" ? country : null,
+          platform !== "All Platforms" ? platform : null,
         );
         setResults(data);
       } catch (error) {
@@ -122,32 +39,7 @@ export default function ResultsPage() {
     };
 
     performSearch();
-  }, [query, selectedCountry, selectedPlatform]);
-
-  {
-    /* Load filter options on component mount (dropdowns) */
-  }
-  const [geographies, setGeographies] = useState([]);
-  const [platforms, setPlatforms] = useState([]);
-  const [advertisers, setAdvertisers] = useState([]);
-  useEffect(() => {
-    const loadFilters = async () => {
-      try {
-        const filters = await fetchFilters();
-        setGeographies(filters.geographies);
-        setPlatforms(filters.platforms);
-        setAdvertisers(filters.advertisers);
-      } catch (error) {
-        console.error("Error loading filters:", error);
-      }
-    };
-
-    loadFilters();
-  }, []);
-
-  {
-    /* Sorting Logic for Spent and Reach (takes current results and just sorts it....)*/
-  }
+  }, [query, country, platform]);
 
   const sortedResults = [...results].sort((a, b) => {
     if (isCheckedSpent) {
@@ -165,10 +57,6 @@ export default function ResultsPage() {
     return 0;
   });
 
-  {
-    /* Temporary Total Spent and Reach calculation, will need backend to calculate this value and send it to the frontend to get an accurate read,
-     remove after presentation 2 */
-  }
   const totalSpent = results.reduce((sum, ad) => {
     const spend = Number(ad.total_spend) || 0;
     return sum + spend;
@@ -181,126 +69,20 @@ export default function ResultsPage() {
   return (
     <div className="results-page">
       <h1 className="results-title">Results Dashboard</h1>
-      {/* Search Bar */}
-      <form onSubmit={handleNewSearch} className="results-search-form">
-        <label className="results-topic-label">Topic:</label>
-        <input
-          type="text"
-          value={newQuery}
-          onChange={(e) => setNewQuery(e.target.value)}
-          placeholder="Search for a new topic..."
-          className="results-search-input"
-        />
-        <button type="submit" className="results-search-button">
-          Search
-        </button>
-      </form>
-      {/* Filters Section with Country, Date Range, Advertiser dropdowns, and Filter Update Button */}
-      <div className="results-filters-row">
-        {/* Country Dropdown with Searchable Options */}
-        <div className="results-filter-item">
-          <Select
-            options={[
-              { value: "All Countries", label: "All Countries" },
-              ...geographies.map((geo) => ({ value: geo, label: geo })),
-            ]}
-            value={{ value: selectedCountry, label: selectedCountry }}
-            onChange={(selectedOption) =>
-              setSelectedCountry(selectedOption.value)
-            }
-            styles={filterDropdownStyle}
-          />
-        </div>
-        {/* Platform dropdown with Searchable Options */}
-        <div className="results-filter-item">
-          <Select
-            options={[
-              { value: "All Platforms", label: "All Platforms" },
-              ...platforms.map((platform) => ({
-                value: platform,
-                label: platform,
-              })),
-            ]}
-            value={{ value: selectedPlatform, label: selectedPlatform }}
-            onChange={(selectedOption) =>
-              setSelectedPlatform(selectedOption.value)
-            }
-            styles={filterDropdownStyle}
-          />
-        </div>
-        {/* Date Range Calendar Picker */}
-        <div className="results-filter-item">
-          <div className="custom-datepicker-wrapper">
-            <DatePicker
-              selectsRange={true}
-              startDate={startDate}
-              endDate={endDate}
-              onChange={(update) => {
-                const [start, end] = update;
-                setStartDate(start);
-                setEndDate(end);
-              }}
-              isClearable={true}
-              placeholderText="Select date range"
-              dateFormat="MM/dd/yyyy"
-              showMonthDropdown
-              showYearDropdown
-              dropdownMode="select"
-              yearDropdownItemNumber={15}
-              scrollableYearDropdown
-            />
-          </div>
-        </div>
-        {/* Advertiser Dropdown with Searchable Options */}
-        <div className="results-filter-item">
-          <Select
-            options={[
-              { value: "All Advertisers", label: "All Advertisers" },
-              ...advertisers.map((adv) => ({ value: adv, label: adv })),
-            ]}
-            value={{ value: selectedAdvertiser, label: selectedAdvertiser }}
-            onChange={(selectedOption) =>
-              setSelectedAdvertiser(selectedOption.value)
-            }
-            styles={filterDropdownStyle}
-          />
-        </div>
-        {/* Update Filters Button with success message */}
-        <button
-          className="results-update-button"
-          style={{ backgroundColor: successMessage ? "green" : "#007bff" }}
-          onClick={() => {
-            const params = {
-              query,
-              country: selectedCountry,
-              advertiser: selectedAdvertiser,
-            };
-            if (startDate)
-              params.startDate = startDate.toISOString().split("T")[0];
-            if (endDate) params.endDate = endDate.toISOString().split("T")[0];
-            setSearchParams(params);
-            setSuccessMessage(true);
-          }}
-        >
-          {successMessage ? "Filters Updated!" : "Update Filters"}
-        </button>
-      </div>
-      {/* Temporary summary stats, will need backend to calculate these values and send them to the frontend to get an accurate read
-      as right now it will only get what is actually being presented which has a max of 25.*/}
+
       <h4 className="results-summary">
         {" "}
         Total Ads: {results.length} | Total Spent: $
         {totalSpent.toLocaleString()} | Total Reach:{" "}
         {totalReach.toLocaleString()}{" "}
       </h4>
-      {/* Placeholder for visualizations */}
       <div className="results-chart-placeholder">
         Tableau dashboard placeholder (TREND CHART)
       </div>
-      {/* Frontend will deal with sorting the ads based on amount spent and reach, backend will just send the data in a random order */}
+
       <h4 className="results-list-title">Ads List</h4>
       <label className="results-sort-label">Sorting Options:</label>
-      {/* Spent Sorting Options */}
+
       <input
         type="checkbox"
         checked={isCheckedSpent}
@@ -320,7 +102,7 @@ export default function ResultsPage() {
             : "Spent (Lowest To Highest) ↓"
           : "← Sort By Amount Spent"}
       </button>
-      {/* Reach Sorting Options */}
+
       <input
         type="checkbox"
         checked={isCheckedReach}
@@ -340,7 +122,7 @@ export default function ResultsPage() {
             : "Reach (Lowest To Highest) ↓"
           : "← Sort By Reach"}
       </button>
-      {/* Ad List Table */}
+
       <div className="results-table-wrap">
         <table className="results-table">
           <thead>
