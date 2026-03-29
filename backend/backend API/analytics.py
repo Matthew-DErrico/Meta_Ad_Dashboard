@@ -8,92 +8,106 @@ from schemas import AdvertiserSpend
 analytics_router = APIRouter()
 sf = SnowflakeService()
 
-def build_filters(geography=None, platform=None, keyword=None, start_date=None, end_date=None):
+def build_filters(page_name=None, platform=None, keyword=None, start_date=None, end_date=None):
 
     conditions = []
     params = {}
 
-    if geography:
-        conditions.append(f"g.geography_name = '{geography}'")
-        params["geography"] = geography
+    if page_name:
+        conditions.append("PAGE_NAME = %(page_name)s")
+        params["page_name"] = page_name
 
     if platform:
-        conditions.append(f"p.platform_name = '{platform}'")
+        conditions.append("""
+            EXISTS (
+                SELECT 1
+                FROM LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS) f
+                WHERE f.VALUE::STRING = %(platform)s
+            )
+        """)
         params["platform"] = platform
 
     if keyword:
-        conditions.append(
-            f"LOWER(c.campaign_name) LIKE LOWER('%{keyword}%')"
-        )
+        conditions.append("""
+            (
+                AD_TEXT ILIKE %(keyword)s
+                OR LINK_TITLE ILIKE %(keyword)s
+                OR LINK_DESCRIPTION ILIKE %(keyword)s
+                OR PAGE_NAME ILIKE %(keyword)s
+            )
+        """)
         params["keyword"] = f"%{keyword}%"
 
     if start_date:
-        conditions.append(f"d.date >= '{start_date}'")
+        conditions.append("START_DATE >= %(start_date)s")
         params["start_date"] = start_date
 
     if end_date:
-        conditions.append(f"d.date <= '{end_date}'")
+        conditions.append("END_DATE <= %(end_date)s")
         params["end_date"] = end_date
 
     where_clause = ""
     if conditions:
-        where_clause = "Where" + " AND ".join(conditions)
+        where_clause = "WHERE " + " AND ".join(conditions)
 
     return where_clause, params
 
-@analytics_router.get("/overview", response_model=OverviewResponse)
+@analytics_router.get("/overview")
 def get_overview():
 
     query = """
         SELECT
-            SUM(ad_spend) AS total_spend,
-            SUM(impressions) AS total_impressions,
-            COUNT(DISTINCT advertiser_id) AS advertiser_count
+            COUNT(*) AS total_ads,
+            COUNT(DISTINCT PAGE_ID) AS unique_pages,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_IMPRESSIONS,
         FROM META_ADS_DB.ANALYTICS.FACT_ADS
     """
 
     rows = sf.run_query(query)
 
     return {
-        "total_spend": float(rows[0][0] or 0),
-        "total_impressions": int(rows[0][1] or 0),
-        "advertiser_count": int(rows[0][2] or 0)
+        "total_ads": int(rows[0][0]),
+        "unique_pages": int(rows[0][1]),
+        "estimated_spending": float(rows[0][2]),
+        "estimated_impressions": int(rows[0][3]),
     }
 
-@analytics_router.get("/top-advertisers", response_model=list[AdvertiserSpend])
-def top_advertisers(
-    geography: Optional[str] = None,
-    platform: Optional[str] = None,
-):
+@analytics_router.get("/top-advertisers")
+def top_advertisers(page_name: Optional[str] = None, platform: Optional[str] = None):
 
-    where_clause, params = build_filters(geography, platform)
+    where_clause, params = build_filters(page_name, platform)
 
     query = f"""
         SELECT
-            a.advertiser_name,
-            SUM(f.ad_spend)
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
+            PAGE_NAME,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
         {where_clause}
-        GROUP BY a.advertiser_name
-        ORDER BY SUM(f.ad_spend) DESC
+        GROUP BY PAGE_NAME
+        ORDER BY ESTIMATED_SPENDING DESC
         LIMIT 10
     """
+
     rows = sf.run_query(query, params)
 
     return [
-        {
-            "advertiser_name": r[0],
-            "total_spend": float(r[1])
-        }
+        {"advertiser_name": r[0], "estimated_spending": float(r[1])}
         for r in rows
     ]
 
 @analytics_router.get("/spend-trend")
 def spend_trend(
-    geography: Optional[str] = None,
+    page_name: Optional[str] = None,
     platform: Optional[str] = None,
     keyword: Optional[str] = Query(None, min_length=2),
     start_date: Optional[str] = None,
@@ -101,7 +115,37 @@ def spend_trend(
 ):
 
     where_clause, params = build_filters(
-        geography,
+        page_name, platform, keyword, start_date, end_date
+    )
+
+    query = f"""
+        SELECT
+            START_DATE,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        {where_clause}
+        GROUP BY START_DATE
+        ORDER BY START_DATE
+    """
+
+    rows = sf.run_query(query, params)
+
+    return [{"date": r[0], "estimated_spending": float(r[1])} for r in rows]
+
+@analytics_router.get("/ad-volume-trend")
+def ad_volume_trend(
+    page_name: Optional[str] = None,
+    platform: Optional[str] = None,
+    keyword: Optional[str] = Query(None, min_length=2),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+
+    where_clause, params = build_filters(
+        page_name,
         platform,
         keyword,
         start_date,
@@ -110,169 +154,99 @@ def spend_trend(
 
     query = f"""
         SELECT
-            d.date,
-            SUM(f.ad_spend) AS total_spend
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Date d ON f.date_id = d.date_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
+            START_DATE,
+            COUNT(*) AS total_ads
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
         {where_clause}
-        GROUP BY d.date
-        ORDER BY d.date
+        GROUP BY START_DATE
+        ORDER BY START_DATE
     """
 
     rows = sf.run_query(query, params)
 
     return [
-        {"date": r[0], "total_spend": float(r[1])}
+        {"date": r[0], "total_ads": int(r[1])}
         for r in rows
     ]
+@analytics_router.get("/platform-breakdown")
+def platform_breakdown(page_name: Optional[str] = None):
 
-@analytics_router.get("/geography-breakdown")
-def geography_breakdown(
-    platform: Optional[str] = None,
-    keyword: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-):
-
-    where_clause, params = build_filters(
-        geography=None,
-        platform=platform,
-        keyword=keyword,
-        start_date=start_date,
-        end_date=end_date
-    )
+    where_clause, params = build_filters(page_name=page_name)
 
     query = f"""
         SELECT
-            g.geography_name,
-            SUM(f.ad_spend) AS total_spend
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+            VALUE::STRING AS platform,
+            COUNT(*) AS TOTAL_ADS,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS,
+        LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS)
         {where_clause}
-        GROUP BY g.geography_name
-        ORDER BY total_spend DESC
+        GROUP BY platform
+        ORDER BY ESTIMATED_SPENDING DESC
     """
 
     rows = sf.run_query(query, params)
 
-    return [{"geography": r[0], "total_spend": float(r[1])} for r in rows]
-
-@analytics_router.get("/platform-breakdown")
-def platform_breakdown(
-    geography: Optional[str] = None,
-    keyword: Optional[str] = None,
-):
-
-    where_clause, params = build_filters(
-        geography=geography,
-        platform=None,
-        keyword=keyword
-    )
-
-    '''query = f"""
-        SELECT
-            p.platform_name,
-            SUM(f.ad_spend) AS total_spend
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
-        {where_clause}
-        GROUP BY p.platform_name
-    """'''
-
-    # Modified query for current schema
-    query = """
-            SELECT
-                VALUE::STRING AS PLATFORM,
-                COUNT(*) AS TOTAL_ADS
-            FROM META_ADS_DB.ANALYTICS.FACT_ADS,
-            LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS)
-            GROUP BY PLATFORM
-            ORDER BY TOTAL_ADS DESC
-        """
-
-    rows = sf.run_query(query, params)
-
-    return [{"platform": r[0], "total_spend": float(r[1])} for r in rows]
+    return [{"platform": r[0], "total_ads:": r[1], "estimated_spending": float(r[2])} for r in rows]
 
 
 @analytics_router.get("/top-campaigns")
 def top_campaigns(
     limit: int = 10,
-    geography: Optional[str] = None,
+    page_name: Optional[str] = None,
     platform: Optional[str] = None,
     keyword: Optional[str] = None,
 ):
 
     where_clause, params = build_filters(
-        geography,
+        page_name,
         platform,
         keyword
     )
 
     query = f"""
         SELECT
-            c.campaign_name,
-            SUM(f.ad_spend) AS total_spend
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
+            COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) AS campaign,
+            COUNT(*) AS ad_count,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
         {where_clause}
-        GROUP BY c.campaign_name
-        ORDER BY total_spend DESC
+        GROUP BY campaign
+        ORDER BY ESTIMATED_SPENDING DESC
         LIMIT {limit}
     """
 
     rows = sf.run_query(query, params)
 
-    return [{"campaign": r[0], "total_spend": float(r[1])} for r in rows]
+    return [
+        {
+            "campaign": r[0],
+            "ad_count": int(r[1]),
+            "estimated_spending": float(r[2])
+        }
+        for r in rows
+    ]
 
 @analytics_router.get("/creative-breakdown")
-def creative_breakdown(
-    geography: Optional[str] = None,
-    platform: Optional[str] = None,
-):
+def creative_breakdown():
 
-    where_clause, params = build_filters(
-        geography,
-        platform
-    )
-
-    '''query = f"""
-        SELECT
-            c.creative_type,
-            COUNT(*) AS ad_count
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-        JOIN Dim_Ad_Creative c ON f.creative_id = c.creative_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
-        {where_clause}
-        GROUP BY c.creative_type
-    """'''
-
-    # Modified query for current schema
     query = """
-            SELECT
-                CASE
-                    WHEN LINK_TITLE IS NOT NULL THEN 'LINK_AD'
-                    ELSE 'TEXT_AD'
-                END AS AD_TYPE,
-                COUNT(*) AS TOTAL
-            FROM META_ADS_DB.ANALYTICS.FACT_ADS
-            GROUP BY AD_TYPE
-        """
+        SELECT
+            CASE
+                WHEN LINK_TITLE IS NOT NULL THEN 'LINK_AD'
+                ELSE 'TEXT_AD'
+            END AS creative_type,
+            COUNT(*) AS ad_count
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        GROUP BY creative_type
+    """
 
-    rows = sf.run_query(query, params)
+    rows = sf.run_query(query)
 
-    return [{"creative_type": r[0], "ad_count": r[1]} for r in rows]
+    return [{"creative_type": r[0], "ad_count": int(r[1])} for r in rows]
