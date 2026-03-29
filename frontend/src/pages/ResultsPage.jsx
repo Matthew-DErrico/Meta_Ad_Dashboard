@@ -11,10 +11,8 @@ export default function ResultsPage() {
   const platform = searchParams.get("platform") || "All Platforms";
 
   const [selectedAd, setSelectedAd] = useState(null);
-  const [highestToLowest, setHighestToLowest] = useState(false);
-  const [isCheckedSpent, setIsCheckedSpent] = useState(false);
-  const [isCheckedReach, setIsCheckedReach] = useState(false);
-  const [highestToLowestReach, setHighestToLowestReach] = useState(false);
+  const [sortMode, setSortMode] = useState("none");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -42,20 +40,34 @@ export default function ResultsPage() {
   }, [query, country, platform]);
 
   const sortedResults = [...results].sort((a, b) => {
-    if (isCheckedSpent) {
+    if (sortMode === "spend") {
       const aSpend = Number(a.total_spend) || 0;
       const bSpend = Number(b.total_spend) || 0;
-      return highestToLowest ? bSpend - aSpend : aSpend - bSpend;
+      return sortDirection === "desc" ? bSpend - aSpend : aSpend - bSpend;
     }
 
-    if (isCheckedReach) {
+    if (sortMode === "reach") {
       const aReach = Number(a.total_impressions) || 0;
       const bReach = Number(b.total_impressions) || 0;
-      return highestToLowestReach ? bReach - aReach : aReach - bReach;
+      return sortDirection === "desc" ? bReach - aReach : aReach - bReach;
     }
 
     return 0;
   });
+
+  const toggleSort = (mode) => {
+    if (sortMode === mode) {
+      setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setSortMode(mode);
+    setSortDirection("desc");
+  };
+
+  const clearSort = () => {
+    setSortMode("none");
+    setSortDirection("desc");
+  };
 
   const totalSpent = results.reduce((sum, ad) => {
     const spend = Number(ad.total_spend) || 0;
@@ -69,122 +81,127 @@ export default function ResultsPage() {
   return (
     <div className="results-page">
       <h1 className="results-title">Results Dashboard</h1>
+      <p className="results-subtitle">
+        Explore ad activity with a quick summary and card-based results.
+      </p>
 
-      <h4 className="results-summary">
-        {" "}
-        Total Ads: {results.length} | Total Spent: $
-        {totalSpent.toLocaleString()} | Total Reach:{" "}
-        {totalReach.toLocaleString()}{" "}
-      </h4>
+      <div className="results-summary-grid">
+        <div className="results-summary-card">
+          <p className="results-summary-label">Total Ads</p>
+          <p className="results-summary-value">
+            {results.length.toLocaleString()}
+          </p>
+        </div>
+        <div className="results-summary-card">
+          <p className="results-summary-label">Total Spent</p>
+          <p className="results-summary-value">
+            ${totalSpent.toLocaleString()}
+          </p>
+        </div>
+        <div className="results-summary-card">
+          <p className="results-summary-label">Total Reach</p>
+          <p className="results-summary-value">{totalReach.toLocaleString()}</p>
+        </div>
+      </div>
+
       <div className="results-chart-placeholder">
         Tableau dashboard placeholder (TREND CHART)
       </div>
 
       <h4 className="results-list-title">Ads List</h4>
-      <label className="results-sort-label">Sorting Options:</label>
+      <div className="results-sort-controls">
+        <span className="results-sort-label">Sorting:</span>
+        <button
+          type="button"
+          className={`results-sort-pill ${sortMode === "spend" ? "active" : ""}`}
+          onClick={() => toggleSort("spend")}
+        >
+          Spent{" "}
+          {sortMode === "spend" ? (sortDirection === "desc" ? "↓" : "↑") : ""}
+        </button>
+        <button
+          type="button"
+          className={`results-sort-pill ${sortMode === "reach" ? "active" : ""}`}
+          onClick={() => toggleSort("reach")}
+        >
+          Reach{" "}
+          {sortMode === "reach" ? (sortDirection === "desc" ? "↓" : "↑") : ""}
+        </button>
+        <button
+          type="button"
+          className="results-sort-reset"
+          onClick={clearSort}
+          disabled={sortMode === "none"}
+        >
+          No Sort
+        </button>
+      </div>
 
-      <input
-        type="checkbox"
-        checked={isCheckedSpent}
-        onChange={() => setIsCheckedSpent(!isCheckedSpent)}
-        className="results-sort-checkbox"
-      />
-      <button
-        className="results-sort-button"
-        style={{ backgroundColor: isCheckedSpent ? "#007bff" : "#6e6b6b" }}
-        onClick={() => {
-          setHighestToLowest(!highestToLowest);
-        }}
-      >
-        {isCheckedSpent
-          ? highestToLowest
-            ? "Spent (Highest To Lowest) ↑"
-            : "Spent (Lowest To Highest) ↓"
-          : "← Sort By Amount Spent"}
-      </button>
+      <div className="results-cards-wrap">
+        {loading && (
+          <div className="results-cards-empty-state">Loading results...</div>
+        )}
 
-      <input
-        type="checkbox"
-        checked={isCheckedReach}
-        onChange={() => setIsCheckedReach(!isCheckedReach)}
-        className="results-sort-checkbox"
-      />
-      <button
-        className="results-sort-button"
-        style={{ backgroundColor: isCheckedReach ? "#007bff" : "#6e6b6b" }}
-        onClick={() => {
-          setHighestToLowestReach(!highestToLowestReach);
-        }}
-      >
-        {isCheckedReach
-          ? highestToLowestReach
-            ? "Reach (Highest To Lowest) ↑"
-            : "Reach (Lowest To Highest) ↓"
-          : "← Sort By Reach"}
-      </button>
+        {!loading && results.length === 0 && (
+          <div className="results-cards-empty-state">
+            No results found. Try a different search term.
+          </div>
+        )}
 
-      <div className="results-table-wrap">
-        <table className="results-table">
-          <thead>
-            <tr className="results-table-header-row">
-              <th className="results-table-head-cell">Ad Name</th>
-              <th className="results-table-head-cell">Advertiser</th>
-              <th className="results-table-head-cell">Geography</th>
-              <th className="results-table-head-cell">Platform</th>
-              <th className="results-table-head-cell">Spent</th>
-              <th className="results-table-head-cell">Reach</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan="6" className="results-table-empty-cell">
-                  Loading results...
-                </td>
-              </tr>
-            )}
+        {!loading &&
+          results.length > 0 &&
+          sortedResults.map((ad, index) => (
+            <button
+              key={`${ad.campaign || "campaign"}-${ad.advertiser || "advertiser"}-${index}`}
+              type="button"
+              className="results-ad-card"
+              onClick={() =>
+                setSelectedAd({
+                  campaign: ad.campaign,
+                  advertiser: ad.advertiser,
+                  geography: ad.geography,
+                  platform: ad.platform,
+                  creativeType: ad.creative_type,
+                  spent: Number(ad.total_spend) || 0,
+                  reach: Number(ad.total_impressions) || 0,
+                  startDate: ad.start_date,
+                  endDate: ad.end_date,
+                })
+              }
+            >
+              <div className="results-ad-card-top-row">
+                <span className="results-ad-card-advertiser">
+                  {ad.advertiser || "N/A"}
+                </span>
+                <span className="results-ad-card-badge platform">
+                  {ad.platform || "Unknown Platform"}
+                </span>
+              </div>
 
-            {!loading && results.length === 0 && (
-              <tr>
-                <td colSpan="6" className="results-table-empty-cell">
-                  No results found. Try a different search term.
-                </td>
-              </tr>
-            )}
+              <p className="results-ad-card-campaign">{ad.campaign || "N/A"}</p>
 
-            {!loading &&
-              results.length > 0 &&
-              sortedResults.map((ad, index) => (
-                <tr
-                  key={index}
-                  className="results-table-row"
-                  onClick={() =>
-                    setSelectedAd({
-                      campaign: ad.campaign,
-                      advertiser: ad.advertiser,
-                      geography: ad.geography,
-                      platform: ad.platform,
-                      spent: Number(ad.total_spend) || 0,
-                      reach: Number(ad.total_impressions) || 0,
-                      startDate: ad.start_date,
-                      endDate: ad.end_date,
-                    })
-                  }
-                >
-                  <td className="results-table-cell">{ad.campaign}</td>
-                  <td className="results-table-cell">{ad.advertiser}</td>
-                  <td className="results-table-cell">{ad.geography}</td>
-                  <td className="results-table-cell">{ad.platform}</td>
-                  <td className="results-table-cell">
-                    ${ad.total_spend?.toLocaleString()}
-                  </td>
-                  <td className="results-table-cell">
-                    {ad.total_impressions?.toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+              <div className="results-ad-card-meta-row">
+                <span className="results-ad-card-geography">
+                  {ad.geography || "Unknown Geography"}
+                </span>
+              </div>
+
+              <div className="results-ad-card-metrics-grid">
+                <div>
+                  <p className="results-ad-card-metric-label">Total Spend</p>
+                  <p className="results-ad-card-metric-value">
+                    ${Number(ad.total_spend || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="results-ad-card-metric-label">Impressions</p>
+                  <p className="results-ad-card-metric-value">
+                    {Number(ad.total_impressions || 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </button>
+          ))}
       </div>
       {selectedAd && (
         <>
@@ -213,6 +230,9 @@ export default function ResultsPage() {
             </p>
             <p>
               <strong>Platform:</strong> {selectedAd.platform || "N/A"}
+            </p>
+            <p>
+              <strong>Creative Type:</strong> {selectedAd.creativeType || "N/A"}
             </p>
             <p>
               <strong>Spent:</strong> ${selectedAd.spent?.toLocaleString()}

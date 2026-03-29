@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchFilters } from "../services/api";
+import { fetchFilters, fetchOverview } from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -18,6 +18,12 @@ export default function FrontPage() {
   const [platforms, setPlatforms] = useState([]);
   const [platformFilter, setPlatformFilter] = useState("");
   const [advertisers, setAdvertisers] = useState([]);
+  const [overview, setOverview] = useState({
+    total_spend: 0,
+    total_impressions: 0,
+    advertiser_count: 0,
+  });
+  const [overviewLoading, setOverviewLoading] = useState(true);
   const helpSectionRef = useRef(null);
 
   {
@@ -36,6 +42,26 @@ export default function FrontPage() {
     };
 
     loadFilters();
+  }, []);
+
+  useEffect(() => {
+    const loadOverview = async () => {
+      setOverviewLoading(true);
+      try {
+        const data = await fetchOverview();
+        setOverview({
+          total_spend: Number(data.total_spend || 0),
+          total_impressions: Number(data.total_impressions || 0),
+          advertiser_count: Number(data.advertiser_count || 0),
+        });
+      } catch (error) {
+        console.error("Error loading overview:", error);
+      } finally {
+        setOverviewLoading(false);
+      }
+    };
+
+    loadOverview();
   }, []);
 
   // Placeholder search handler
@@ -329,6 +355,37 @@ export default function FrontPage() {
           </button>
         ))}
       </div>
+
+      {/* Called Fun facts in css... Overview Section with key metrics displayed in cards */}
+      <section className="fun-facts-section" aria-live="polite">
+        <h3 className="fun-facts-title">Ad Intelligence Summary</h3>
+        <div className="fun-facts-grid">
+          <div className="fun-fact-card">
+            <p className="fun-fact-label">Total Spend</p>
+            <p className="fun-fact-value">
+              {overviewLoading
+                ? "..."
+                : `$${overview.total_spend.toLocaleString()}`}
+            </p>
+          </div>
+          <div className="fun-fact-card">
+            <p className="fun-fact-label">Impressions</p>
+            <p className="fun-fact-value">
+              {overviewLoading
+                ? "..."
+                : overview.total_impressions.toLocaleString()}
+            </p>
+          </div>
+          <div className="fun-fact-card">
+            <p className="fun-fact-label">Advertisers</p>
+            <p className="fun-fact-value">
+              {overviewLoading
+                ? "..."
+                : overview.advertiser_count.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Help Arrow Button */}
       <div className="help-arrow-container">

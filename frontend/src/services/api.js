@@ -17,3 +17,8 @@ export const fetchSearchResults = async (keyword, geography, platform) => {
   });
   return response.data;
 };
+
+export const fetchOverview = async () => {
+  const response = await axios.get(`${API_BASE_URL}/analytics/overview`);
+  return response.data;
+};

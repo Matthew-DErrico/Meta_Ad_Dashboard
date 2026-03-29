@@ -6,6 +6,13 @@
   margin-bottom: 0.25rem;
 }
 
+.results-subtitle {
+  margin: 0 0 1.2rem;
+  font-family: "DM Mono", monospace;
+  font-size: 13px;
+  color: #5b6475;
+}
+
 .results-search-form {
   margin-bottom: 1rem;
 }
@@ -104,8 +111,35 @@
   }
 }
 
-.results-summary {
-  margin-top: 1.5rem;
+.results-summary-grid {
+  margin-top: 0.6rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.results-summary-card {
+  background: #ffffff;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  text-align: left;
+}
+
+.results-summary-label {
+  margin: 0;
+  color: #5b6475;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.results-summary-value {
+  margin: 0.4rem 0 0;
+  color: #1e2430;
+  font-size: 1.35rem;
+  font-weight: 800;
 }
 
 .results-chart-placeholder {
@@ -132,20 +166,155 @@
 }
 
 .results-sort-label {
-  margin-right: 0.5rem;
+  margin-right: 0.3rem;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
+  color: #5b6475;
 }
 
-.results-sort-checkbox {
-  margin-right: 0.5rem;
+.results-sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
 }
 
-.results-sort-button {
-  color: #ffffff;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
+.results-sort-pill,
+.results-sort-reset {
+  border: 1px solid #d8deea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1e2430;
+  padding: 0.35rem 0.75rem;
+  font-family: "DM Mono", monospace;
+  font-size: 12px;
   cursor: pointer;
-  margin-right: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.results-sort-pill:hover,
+.results-sort-reset:hover {
+  border-color: #9fb6e8;
+}
+
+.results-sort-pill.active {
+  border-color: #2f6fed;
+  background: #e7f1ff;
+  color: #1d4ed8;
+}
+
+.results-sort-reset:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.results-cards-wrap {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.results-cards-empty-state {
+  grid-column: 1 / -1;
+  padding: 2rem;
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+  text-align: center;
+  background-color: #ffffff;
+  color: #5b6475;
+}
+
+.results-ad-card {
+  width: 100%;
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background-color: #ffffff;
+  text-align: left;
+  padding: 1rem;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.results-ad-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.12);
+}
+
+.results-ad-card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.results-ad-card-advertiser {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1e2430;
+}
+
+.results-ad-card-campaign {
+  margin: 0.65rem 0 0.7rem;
+  color: #1e2430;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.results-ad-card-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.results-ad-card-geography {
+  color: #5b6475;
+  font-size: 0.8rem;
+}
+
+.results-ad-card-badge {
+  display: inline-block;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  padding: 0.2rem 0.55rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.results-ad-card-badge.platform {
+  background-color: #e7f1ff;
+  color: #1d4ed8;
+}
+
+.results-ad-card-badge.creative {
+  background-color: #eef2ff;
+  color: #4338ca;
+}
+
+.results-ad-card-metrics-grid {
+  margin-top: 0.9rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+}
+
+.results-ad-card-metric-label {
+  margin: 0;
+  color: #5b6475;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.results-ad-card-metric-value {
+  margin: 0.2rem 0 0;
+  color: #1e2430;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .results-table-wrap {
@@ -189,6 +358,77 @@
 }
 
 @media (prefers-color-scheme: dark) {
+  .results-subtitle {
+    color: #a8b3c7;
+  }
+
+  .results-summary-card {
+    border: 1px solid #2a3445;
+    background-color: #171d27;
+  }
+
+  .results-summary-label {
+    color: #a8b3c7;
+  }
+
+  .results-summary-value {
+    color: #e8edf7;
+  }
+
+  .results-sort-label {
+    color: #a8b3c7;
+  }
+
+  .results-sort-pill,
+  .results-sort-reset {
+    border-color: #2a3445;
+    background: #171d27;
+    color: #e8edf7;
+  }
+
+  .results-sort-pill:hover,
+  .results-sort-reset:hover {
+    border-color: #4a628d;
+  }
+
+  .results-sort-pill.active {
+    border-color: #7aa2ff;
+    background: #22385d;
+    color: #c4d7ff;
+  }
+
+  .results-cards-empty-state {
+    border: 1px solid #2a3445;
+    background-color: #171d27;
+    color: #a8b3c7;
+  }
+
+  .results-ad-card {
+    border: 1px solid #2a3445;
+    background-color: #171d27;
+  }
+
+  .results-ad-card-advertiser,
+  .results-ad-card-campaign,
+  .results-ad-card-metric-value {
+    color: #e8edf7;
+  }
+
+  .results-ad-card-geography,
+  .results-ad-card-metric-label {
+    color: #a8b3c7;
+  }
+
+  .results-ad-card-badge.platform {
+    background-color: #22385d;
+    color: #c4d7ff;
+  }
+
+  .results-ad-card-badge.creative {
+    background-color: #30325b;
+    color: #d9d5ff;
+  }
+
   .results-table-wrap {
     border: 1px solid #2a3445;
     background-color: #171d27;
@@ -208,6 +448,12 @@
   }
 }
 
+@media (max-width: 900px) {
+  .results-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .results-modal-overlay {
   position: fixed;
   top: 0;
@@ -216,6 +462,7 @@
   height: 100%;
   background-color: rgba(0, 0, 0, 0.3);
   z-index: 1700;
+  animation: results-overlay-fade-in 220ms ease-out;
 }
 
 .results-side-panel {
@@ -231,6 +478,35 @@
   overflow-y: auto;
   text-align: left;
   color: #1e2430;
+  will-change: transform, opacity;
+  animation: results-sidebar-slide-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes results-overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes results-sidebar-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .results-modal-overlay,
+  .results-side-panel {
+    animation: none;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
