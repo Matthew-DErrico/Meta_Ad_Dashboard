@@ -2,14 +2,12 @@ from fastapi import APIRouter
 from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
-from sql_service import SQLiteService
 from analytics import build_filters
 from schemas import OverviewResponse
 from schemas import AdvertiserSpend
 
 exploration_router = APIRouter()
-#sf = SnowflakeService()
-sf = SQLiteService()
+sf = SnowflakeService()
 
 @exploration_router.get("/search")
 def search_ads(
@@ -18,7 +16,7 @@ def search_ads(
     platform: Optional[str] = None,
 ):
 
-    where_clause, params = build_filters(
+    filter_clause = build_filters(
         geography,
         platform
     )

@@ -2,13 +2,11 @@ from fastapi import APIRouter
 from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
-from sql_service import SQLiteService
 from schemas import OverviewResponse
 from schemas import AdvertiserSpend
 
 analytics_router = APIRouter()
-#sf = SnowflakeService()
-sf = SQLiteService()
+sf = SnowflakeService()
 
 def build_filters(page_name=None, platform=None, keyword=None, start_date=None, end_date=None):
 
