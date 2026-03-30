@@ -23,78 +23,132 @@ def search_ads(
         platform
     )
 
-    query = f"""
-        SELECT
-            a.advertiser_id,
-            a.advertiser_name,
-            c.campaign_name,
-            g.geography_name,
-            p.platform_name,
-            SUM(f.ad_spend) AS total_spend,
-            SUM(f.impressions) AS total_impressions,
-            f.start_date,
-            f.end_date
-        FROM FACT_ADS f
-        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
-        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
-        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
-        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
-        LEFT JOIN DIM_DATE d ON f.date_id = d.date_id
-        WHERE (
-            LOWER(a.advertiser_name) LIKE LOWER(:keyword)
-            OR LOWER(c.campaign_name) LIKE LOWER(:keyword)
-        )
-        {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
-        GROUP BY a.advertiser_name, c.campaign_name, g.geography_name, p.platform_name
-        LIMIT 25
-    """
+    query = """
+    SELECT
+        AD_ID,
+        PAGE_NAME,
+        START_DATE,
+        AD_TEXT,
+        LINK_TITLE,
+        LINK_DESCRIPTION,
+        SNAPSHOT_URL,
+        SPEND_RANGE,
+        TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+        IMPRESSIONS_RANGE,
+        TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+    FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+    WHERE
+        AD_TEXT ILIKE %(keyword)s
+        OR LINK_TITLE ILIKE %(keyword)s
+        OR LINK_DESCRIPTION ILIKE %(keyword)s
+        OR LINK_CAPTION ILIKE %(keyword)s
+        OR PAGE_NAME ILIKE %(keyword)s
+        OR ARRAY_TO_STRING(f.PUBLISHER_PLATFORMS, ',') ILIKE %(keyword)s
+    LIMIT 50
+"""
 
-    params["keyword"] = f"%{keyword}%"
-
-    rows = sf.run_query(query, params)
+    rows = sf.run_query(query, {
+        "keyword": f"%{keyword}%"
+    })
 
     return [
         {
-            "advertiser_id": int(r[0]),
-            "advertiser": r[1],
-            "campaign": r[2],
-            "geography": r[3],
-            "platform": r[4],
-            "total_spend": float(r[5]),
-            "total_impressions": float(r[6]),
-            "start_date": r[7],
-            "end_date": r[8]
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "link_title": r[4],
+            "link_description": r[5],
+            "spending_range": r[7],
+            "estimated_spending": r[8],
+            "impressions_range": r[9],
+            "estimated_impressions": r[10],
+            "snapshot_url": r[6]
         }
         for r in rows
     ]
 
+@exploration_router.get("/ad-details/{ad_id}")
+def ad_details(ad_id: str):
+
+    query = """
+        SELECT
+            AD_ID,
+            PAGE_ID,
+            PAGE_NAME,
+            AD_TEXT,
+            LINK_TITLE,
+            LINK_DESCRIPTION,
+            LINK_CAPTION,
+            SNAPSHOT_URL,
+            START_DATE,
+            END_DATE,
+            PUBLISHER_PLATFORMS,
+            SPEND_RANGE,
+            IMPRESSIONS_RANGE,
+            TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+            TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        WHERE AD_ID = %(ad_id)s
+    """
+
+    rows = sf.run_query(query, {"ad_id": ad_id})
+
+    if not rows:
+        return {}
+
+    r = rows[0]
+
+    return {
+        "ad_id": r[0],
+        "page_id": r[1],
+        "page_name": r[2],
+        "ad_text": r[3],
+        "link_title": r[4],
+        "link_description": r[5],
+        "link_caption": r[6],
+        "snapshot_url": r[7],
+        "start_date": r[8],
+        "end_date": r[9],
+        "platforms": r[10],
+        "spend_range": r[11],
+        "impressions_range": r[12],
+        "estimated_spending": float(r[13]),
+        "estimated_impressions": float(r[14]),
+    }
+
 @exploration_router.get("/advertiser-details")
 def advertiser_details(
-    advertiser_id: int,
-    geography: Optional[str] = None,
+    page_name: str,
     platform: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
 ):
 
     where_clause, params = build_filters(
-        geography=geography,
-        platform=platform
+        page_name=page_name,
+        platform=platform,
+        start_date=start_date,
+        end_date=end_date
     )
-
-    params["advertiser_id"] = advertiser_id
 
     query = f"""
         SELECT
-            a.advertiser_name,
-            SUM(f.ad_spend) AS total_spend,
-            SUM(f.impressions) AS total_impressions,
-            COUNT(DISTINCT f.campaign_id) AS campaign_count
-        FROM FACT_ADS f
-        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
-        LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
-        LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
-        WHERE f.advertiser_id = :advertiser_id
-        {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
-        GROUP BY a.advertiser_name
+            PAGE_NAME,
+            COUNT(*) AS total_ads,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_IMPRESSIONS,
+            MIN(START_DATE) AS first_seen,
+            MAX(START_DATE) AS last_seen
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        {where_clause}
+        GROUP BY PAGE_NAME
     """
 
     rows = sf.run_query(query, params)
@@ -102,41 +156,61 @@ def advertiser_details(
     if not rows:
         return {}
 
+    r = rows[0]
+
     return {
-        "advertiser": rows[0][0],
-        "total_spend": float(rows[0][1]),
-        "impressions": int(rows[0][2]),
-        "campaign_count": int(rows[0][3]),
+        "advertiser": r[0],
+        "total_ads": int(r[1]),
+        "estimated_spending": float(r[2]),
+        "estimated_impressions": int(r[3]),
+        "first_seen": r[4],
+        "last_seen": r[5],
     }
 
 @exploration_router.get("/campaign-details")
-def campaign_details(campaign_id: int):
+def campaign_details(
+    campaign: str,
+    page_name: Optional[str] = None,
+):
+
+    params = {
+        "campaign": campaign
+    }
 
     query = """
         SELECT
-            c.campaign_name,
-            SUM(f.ad_spend) AS total_spend,
-            SUM(f.impressions) AS impressions,
-            MIN(d.date) AS start_date,
-            MAX(d.date) AS end_date
-        FROM FACT_ADS f
-        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
-        JOIN DIM_DATE d ON f.date_id = d.date_id
-        WHERE f.campaign_id = %(campaign_id)s
-        GROUP BY c.campaign_name
+            COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) AS campaign,
+            COUNT(*) AS total_ads,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_IMPRESSIONS,
+            MIN(START_DATE) AS start_date,
+            MAX(START_DATE) AS end_date
+
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        WHERE COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) = %(campaign)s
+        GROUP BY campaign
     """
 
-    rows = sf.run_query(query, {"campaign_id": campaign_id})
+    rows = sf.run_query(query, params)
 
     if not rows:
         return {}
 
+    r = rows[0]
+
     return {
-        "campaign": rows[0][0],
-        "total_spend": float(rows[0][1]),
-        "impressions": int(rows[0][2]),
-        "start_date": rows[0][3],
-        "end_date": rows[0][4],
+        "campaign": r[0],
+        "total_ads": int(r[1]),
+        "estimated_spending": float(r[2]),
+        "estimated_impressions": int(r[3]),
+        "start_date": r[4],
+        "end_date": r[5],
     }
 
 @exploration_router.get("/ads")
@@ -144,6 +218,7 @@ def ads_list(
     campaign_id: Optional[int] = None,
     advertiser_id: Optional[int] = None,
     keyword: Optional[str] = None,
+    limit: int = 100
 ):
 
     conditions = []
@@ -167,30 +242,26 @@ def ads_list(
     if conditions:
         where_clause = "WHERE " + " AND ".join(conditions)
 
-    query = f"""
-        SELECT
-            a.advertiser_name,
-            c.campaign_name,
-            cre.creative_type,
-            f.ad_spend,
-            f.impressions
-        FROM FACT_ADS f
-        JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
-        JOIN DIM_CAMPAIGN c ON f.campaign_id = c.campaign_id
-        LEFT JOIN DIM_AD_CREATIVE cre ON f.creative_id = cre.creative_id
-        {where_clause}
-        LIMIT 100
-    """
-
-    rows = sf.run_query(query, params)
+    query = """
+            SELECT
+                AD_ID,
+                PAGE_NAME,
+                START_DATE,
+                AD_TEXT,
+                SNAPSHOT_URL
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS
+            ORDER BY START_DATE DESC
+            LIMIT %(limit)s
+        """
+    rows = sf.run_query(query, {"limit": limit})
 
     return [
         {
-            "advertiser": r[0],
-            "campaign": r[1],
-            "creative_type": r[2],
-            "spend": float(r[3]),
-            "impressions": int(r[4]),
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "snapshot_url": r[4]
         }
         for r in rows
     ]

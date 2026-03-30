@@ -4,7 +4,6 @@ from analytics import analytics_router
 from exploration import exploration_router
 from metadata import metadata_router
 
-
 app = FastAPI(title="Political Advertising Transparency API")
 
 # tell the frontend to allow requests from server
