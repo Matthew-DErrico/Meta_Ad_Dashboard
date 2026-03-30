@@ -25,6 +25,7 @@ def search_ads(
 
     query = f"""
         SELECT
+            a.advertiser_id,
             a.advertiser_name,
             c.campaign_name,
             g.geography_name,
@@ -54,14 +55,15 @@ def search_ads(
 
     return [
         {
-            "advertiser": r[0],
-            "campaign": r[1],
-            "geography": r[2],
-            "platform": r[3],
-            "total_spend": float(r[4]),
-            "total_impressions": float(r[5]),
-            "start_date": r[6],
-            "end_date": r[7]
+            "advertiser_id": int(r[0]),
+            "advertiser": r[1],
+            "campaign": r[2],
+            "geography": r[3],
+            "platform": r[4],
+            "total_spend": float(r[5]),
+            "total_impressions": float(r[6]),
+            "start_date": r[7],
+            "end_date": r[8]
         }
         for r in rows
     ]
@@ -90,7 +92,7 @@ def advertiser_details(
         JOIN DIM_ADVERTISER a ON f.advertiser_id = a.advertiser_id
         LEFT JOIN DIM_GEOGRAPHY g ON f.geography_id = g.geography_id
         LEFT JOIN DIM_PLATFORM p ON f.platform_id = p.platform_id
-        WHERE f.advertiser_id = %(advertiser_id)s
+        WHERE f.advertiser_id = :advertiser_id
         {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
         GROUP BY a.advertiser_name
     """

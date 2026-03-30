@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchSearchResults } from "../services/api";
+import { fetchAdvertiserDetails, fetchSearchResults } from "../services/api";
 import "./FrontPage.css";
 import "./ResultsPage.css";
 
@@ -11,6 +11,10 @@ export default function ResultsPage() {
   const platform = searchParams.get("platform") || "All Platforms";
 
   const [selectedAd, setSelectedAd] = useState(null);
+  const [showAdvertiserInfo, setShowAdvertiserInfo] = useState(false);
+  const [advertiserInfo, setAdvertiserInfo] = useState(null);
+  const [advertiserInfoLoading, setAdvertiserInfoLoading] = useState(false);
+  const [advertiserInfoError, setAdvertiserInfoError] = useState("");
   const [sortMode, setSortMode] = useState("none");
   const [sortDirection, setSortDirection] = useState("desc");
 
@@ -77,6 +81,37 @@ export default function ResultsPage() {
     const Reach = Number(ad.total_impressions) || 0;
     return sum + Reach;
   }, 0);
+
+  const openAdvertiserInfo = async () => {
+    if (!selectedAd?.advertiserId) return;
+
+    setShowAdvertiserInfo(true);
+
+    if (advertiserInfo) return;
+
+    setAdvertiserInfoLoading(true);
+    setAdvertiserInfoError("");
+    try {
+      const details = await fetchAdvertiserDetails(
+        selectedAd.advertiserId,
+        country !== "All Countries" ? country : null,
+        platform !== "All Platforms" ? platform : null,
+      );
+      setAdvertiserInfo(details || {});
+    } catch (error) {
+      console.error("Error fetching advertiser details:", error);
+      setAdvertiserInfoError("Unable to load advertiser info right now.");
+    } finally {
+      setAdvertiserInfoLoading(false);
+    }
+  };
+
+  const activeFilters = [
+    country !== "All Countries" ? { label: "Geography", value: country } : null,
+    platform !== "All Platforms"
+      ? { label: "Platform", value: platform }
+      : null,
+  ].filter(Boolean);
 
   return (
     <div className="results-page">
@@ -157,6 +192,7 @@ export default function ResultsPage() {
               className="results-ad-card"
               onClick={() =>
                 setSelectedAd({
+                  advertiserId: ad.advertiser_id,
                   campaign: ad.campaign,
                   advertiser: ad.advertiser,
                   geography: ad.geography,
@@ -206,46 +242,207 @@ export default function ResultsPage() {
       {selectedAd && (
         <>
           <div
-            onClick={() => setSelectedAd(null)}
+            onClick={() => {
+              setSelectedAd(null);
+              setShowAdvertiserInfo(false);
+              setAdvertiserInfo(null);
+              setAdvertiserInfoError("");
+            }}
             className="results-modal-overlay"
           />
 
           <div className="results-side-panel">
             <button
-              onClick={() => setSelectedAd(null)}
+              onClick={() => {
+                setSelectedAd(null);
+                setShowAdvertiserInfo(false);
+                setAdvertiserInfo(null);
+                setAdvertiserInfoError("");
+              }}
               className="results-side-panel-close"
             >
               ×
             </button>
 
-            <h2>Ad Details</h2>
-            <p>
-              <strong>Ad Name:</strong> {selectedAd.campaign || "N/A"}
-            </p>
-            <p>
-              <strong>Advertiser:</strong> {selectedAd.advertiser || "N/A"}
-            </p>
-            <p>
-              <strong>Geography:</strong> {selectedAd.geography || "N/A"}
-            </p>
-            <p>
-              <strong>Platform:</strong> {selectedAd.platform || "N/A"}
-            </p>
-            <p>
-              <strong>Creative Type:</strong> {selectedAd.creativeType || "N/A"}
-            </p>
-            <p>
-              <strong>Spent:</strong> ${selectedAd.spent?.toLocaleString()}
-            </p>
-            <p>
-              <strong>Reach:</strong> {selectedAd.reach?.toLocaleString()}
-            </p>
-            <p>
-              <strong>Start Date:</strong> {selectedAd.startDate || "N/A"}
-            </p>
-            <p>
-              <strong>End Date:</strong> {selectedAd.endDate || "N/A"}
-            </p>
+            {!showAdvertiserInfo && (
+              <>
+                <h2 className="results-side-panel-title">Ad Details</h2>
+                <div className="results-side-panel-section">
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Ad Name</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.campaign || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-inline-row">
+                    <div className="results-side-panel-field grow">
+                      <span className="results-side-panel-label">
+                        Advertiser
+                      </span>
+                      <span className="results-side-panel-value">
+                        {selectedAd.advertiser || "N/A"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="results-side-panel-action"
+                      onClick={openAdvertiserInfo}
+                      disabled={!selectedAd.advertiserId}
+                    >
+                      Advertiser Info
+                    </button>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Geography</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.geography || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Platform</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.platform || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">
+                      Creative Type
+                    </span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.creativeType || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Spent</span>
+                    <span className="results-side-panel-value">
+                      ${selectedAd.spent?.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Reach</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.reach?.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Start Date</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.startDate || "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">End Date</span>
+                    <span className="results-side-panel-value">
+                      {selectedAd.endDate || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {showAdvertiserInfo && (
+              <>
+                <h2 className="results-side-panel-title">Advertiser Info</h2>
+                <button
+                  type="button"
+                  className="results-side-panel-action secondary"
+                  onClick={() => setShowAdvertiserInfo(false)}
+                >
+                  Back to Ad Details
+                </button>
+
+                <p className="results-side-panel-note">
+                  Note: Advertiser totals are affected by active filters (such
+                  as geography and platform), so values can vary.
+                </p>
+
+                <div className="results-side-panel-filters">
+                  <p className="results-side-panel-filters-title">
+                    Active Filters
+                  </p>
+                  {activeFilters.length === 0 ? (
+                    <p className="results-side-panel-filters-empty">
+                      No active filters
+                    </p>
+                  ) : (
+                    <div className="results-side-panel-filters-list">
+                      {activeFilters.map((filter) => (
+                        <span
+                          key={filter.label}
+                          className="results-side-panel-filter-chip"
+                        >
+                          {filter.label}: {filter.value}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {advertiserInfoLoading && (
+                  <p className="results-side-panel-status">
+                    Loading advertiser info...
+                  </p>
+                )}
+
+                {!advertiserInfoLoading && advertiserInfoError && (
+                  <p className="results-side-panel-status error">
+                    {advertiserInfoError}
+                  </p>
+                )}
+
+                {!advertiserInfoLoading && !advertiserInfoError && (
+                  <div className="results-side-panel-section">
+                    <div className="results-side-panel-field">
+                      <span className="results-side-panel-label">
+                        Advertiser
+                      </span>
+                      <span className="results-side-panel-value">
+                        {advertiserInfo?.advertiser || "N/A"}
+                      </span>
+                    </div>
+                    <div className="results-side-panel-field">
+                      <span className="results-side-panel-label">
+                        Total Spend
+                      </span>
+                      <span className="results-side-panel-value">
+                        $
+                        {Number(
+                          advertiserInfo?.total_spend || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="results-side-panel-field">
+                      <span className="results-side-panel-label">
+                        Impressions
+                      </span>
+                      <span className="results-side-panel-value">
+                        {Number(
+                          advertiserInfo?.impressions || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="results-side-panel-field">
+                      <span className="results-side-panel-label">
+                        Campaign Count
+                      </span>
+                      <span className="results-side-panel-value">
+                        {Number(
+                          advertiserInfo?.campaign_count || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </>
       )}

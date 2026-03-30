@@ -90,6 +90,13 @@ export default function Navbar() {
   const menuPortalTarget =
     typeof document !== "undefined" ? document.body : null;
 
+  const removeFilterAndApply = (paramKey) => {
+    const params = new URLSearchParams(location.search);
+    params.delete(paramKey);
+    const nextQuery = params.toString();
+    navigate(nextQuery ? `/results?${nextQuery}` : "/results");
+  };
+
   const handleApply = (event) => {
     event.preventDefault();
     const params = new URLSearchParams();
@@ -129,9 +136,14 @@ export default function Navbar() {
             isSearchable={true}
             isClearable={true}
             placeholder="Country"
-            onChange={(selectedOption) =>
-              setCountry(selectedOption?.value || "")
-            }
+            onChange={(selectedOption, actionMeta) => {
+              const nextCountry = selectedOption?.value || "";
+              setCountry(nextCountry);
+
+              if (actionMeta?.action === "clear") {
+                removeFilterAndApply("country");
+              }
+            }}
             styles={dropdownStyle}
             menuPortalTarget={menuPortalTarget}
             menuPosition="fixed"
@@ -146,9 +158,14 @@ export default function Navbar() {
             isSearchable={true}
             isClearable={true}
             placeholder="Platform"
-            onChange={(selectedOption) =>
-              setPlatform(selectedOption?.value || "")
-            }
+            onChange={(selectedOption, actionMeta) => {
+              const nextPlatform = selectedOption?.value || "";
+              setPlatform(nextPlatform);
+
+              if (actionMeta?.action === "clear") {
+                removeFilterAndApply("platform");
+              }
+            }}
             styles={dropdownStyle}
             menuPortalTarget={menuPortalTarget}
             menuPosition="fixed"
@@ -185,9 +202,14 @@ export default function Navbar() {
             isSearchable={true}
             isClearable={true}
             placeholder="Advertiser"
-            onChange={(selectedOption) =>
-              setAdvertiser(selectedOption?.value || "")
-            }
+            onChange={(selectedOption, actionMeta) => {
+              const nextAdvertiser = selectedOption?.value || "";
+              setAdvertiser(nextAdvertiser);
+
+              if (actionMeta?.action === "clear") {
+                removeFilterAndApply("advertiser");
+              }
+            }}
             styles={dropdownStyle}
             menuPortalTarget={menuPortalTarget}
             menuPosition="fixed"

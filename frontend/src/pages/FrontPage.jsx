@@ -411,9 +411,9 @@ export default function FrontPage() {
             <h3 className="help-card-title">Country Filter</h3>
             <p className="help-card-description">
               Select a specific country to filter ads by geographic location.
-              Choose "All Countries" to search across all available markets.
-              This helps narrow results to specific regions where ads are
-              running.
+              Choose "All Countries" or leave blank to search across all
+              available markets. This helps narrow results to specific regions
+              where ads are running.
             </p>
           </div>
 
@@ -421,9 +421,9 @@ export default function FrontPage() {
             <h3 className="help-card-title">Platform Filter</h3>
             <p className="help-card-description">
               Filter ads by the Meta platform where they appear (Facebook,
-              Instagram, etc.). Choose "All Platforms" to include ads from all
-              available platforms. This allows you to focus on specific
-              channels.
+              Instagram, etc.). Choose "All Platforms" or leave blank to include
+              ads from all available platforms. This allows you to focus on
+              specific channels.
             </p>
           </div>
 
@@ -441,8 +441,8 @@ export default function FrontPage() {
             <h3 className="help-card-title">Advertiser Filter</h3>
             <p className="help-card-description">
               Search and filter by specific advertisers. Choose "All
-              Advertisers" to view ads from all parties. Use this to track
-              spending and messaging from particular organizations or
+              Advertisers" or leave blank to view ads from all parties. Use this
+              to track spending and messaging from particular organizations or
               candidates.
             </p>
           </div>
