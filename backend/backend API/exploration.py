@@ -30,13 +30,18 @@ def search_ads(
         LINK_TITLE,
         LINK_DESCRIPTION,
         SNAPSHOT_URL,
-        COALESCE((SPEND_LOWER + SPEND_UPPER)/2, 0) AS estimated_spend
-    FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        SPEND_RANGE,
+        TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+        IMPRESSIONS_RANGE,
+        TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+    FROM META_ADS_DB.ANALYTICS.FACT_ADS f
     WHERE
         AD_TEXT ILIKE %(keyword)s
         OR LINK_TITLE ILIKE %(keyword)s
         OR LINK_DESCRIPTION ILIKE %(keyword)s
+        OR LINK_CAPTION ILIKE %(keyword)s
         OR PAGE_NAME ILIKE %(keyword)s
+        OR ARRAY_TO_STRING(f.PUBLISHER_PLATFORMS, ',') ILIKE %(keyword)s
     LIMIT 50
 """
 
@@ -52,8 +57,11 @@ def search_ads(
             "ad_text": r[3],
             "link_title": r[4],
             "link_description": r[5],
-            "snapshot_url": r[6],
-            "estimated_spending": r[7]
+            "spending_range": r[7],
+            "estimated_spending": r[8],
+            "impressions_range": r[9],
+            "estimated_impressions": r[10],
+            "snapshot_url": r[6]
         }
         for r in rows
     ]
@@ -76,14 +84,8 @@ def ad_details(ad_id: str):
             PUBLISHER_PLATFORMS,
             SPEND_RANGE,
             IMPRESSIONS_RANGE,
-            SUM(
-                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
-                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
-            ) AS ESTIMATED_SPENDING,
-            SUM(
-                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
-                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
-            ) AS ESTIMATED_IMPRESSIONS
+            TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+            TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
         FROM META_ADS_DB.ANALYTICS.FACT_ADS
         WHERE AD_ID = %(ad_id)s
     """
