@@ -2,15 +2,36 @@
   width: 100%;
 }
 
-.results-title {
-  margin-bottom: 0.25rem;
+.results-overview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+  text-align: left;
 }
 
-.results-subtitle {
-  margin: 0 0 1.2rem;
+.results-overview-eyebrow {
+  width: 20px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: #378add;
+}
+
+.results-overview-title {
   font-family: "DM Mono", monospace;
-  font-size: 13px;
-  color: #5b6475;
+  font-size: 20px;
+  color: #444441;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .results-overview-title {
+    color: #e8edf7;
+  }
 }
 
 .results-search-form {
@@ -228,6 +249,7 @@
 
 .results-ad-card {
   width: 100%;
+  height: 320px;
   border: 1px solid #d8deea;
   border-radius: 10px;
   background-color: #ffffff;
@@ -237,6 +259,9 @@
   transition:
     transform 0.15s ease,
     box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .results-ad-card:hover {
@@ -262,6 +287,24 @@
   color: #1e2430;
   font-size: 0.95rem;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.results-ad-card-link {
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  width: fit-content;
+  margin-bottom: 0.55rem;
+}
+
+.results-ad-card-link:hover {
+  color: #1e40af;
 }
 
 .results-ad-card-meta-row {
@@ -296,7 +339,7 @@
 }
 
 .results-ad-card-metrics-grid {
-  margin-top: 0.9rem;
+  margin-top: auto;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.8rem;
@@ -417,6 +460,14 @@
   .results-ad-card-geography,
   .results-ad-card-metric-label {
     color: #a8b3c7;
+  }
+
+  .results-ad-card-link {
+    color: #93c5fd;
+  }
+
+  .results-ad-card-link:hover {
+    color: #bfdbfe;
   }
 
   .results-ad-card-badge.platform {
@@ -574,6 +625,81 @@
   color: #1e2430;
 }
 
+.results-side-panel-value.long-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.results-side-panel-platform-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.results-side-panel-timeline {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #5b6475;
+}
+
+.results-side-panel-timeline-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6 0%, #7c3aed 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+.results-side-panel-range-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.results-side-panel-midpoint {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: #e8f1ff;
+  color: #1f4ab8;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.results-advertiser-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.7rem 0;
+}
+
+.results-advertiser-metric-card {
+  border: 1px solid #d8deea;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 0.6rem;
+}
+
+.results-advertiser-metric-label {
+  margin: 0;
+  color: #5b6475;
+  font-family: "DM Mono", monospace;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.results-advertiser-metric-value {
+  margin: 0.3rem 0 0;
+  color: #1e2430;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
 .results-side-panel-status {
   margin: 0.6rem 0;
   border: 1px dashed #d8deea;
@@ -664,6 +790,10 @@
   .results-side-panel {
     width: 100vw;
   }
+
+  .results-advertiser-metrics-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .results-side-panel-action:not(:disabled):hover {
@@ -709,6 +839,28 @@
   }
 
   .results-side-panel-value {
+    color: #e8edf7;
+  }
+
+  .results-side-panel-timeline {
+    color: #a8b3c7;
+  }
+
+  .results-side-panel-midpoint {
+    background: #213a63;
+    color: #c4d7ff;
+  }
+
+  .results-advertiser-metric-card {
+    border-color: #2a3445;
+    background: #171d27;
+  }
+
+  .results-advertiser-metric-label {
+    color: #a8b3c7;
+  }
+
+  .results-advertiser-metric-value {
     color: #e8edf7;
   }
 

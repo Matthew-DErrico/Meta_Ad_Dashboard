@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { fetchFilters, fetchOverview } from "../services/api";
+import {
+  fetchFilters,
+  fetchRecentAds,
+  fetchTopAdvertisers,
+} from "../services/api";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
@@ -8,6 +12,15 @@ import { getFilterDropdownStyle } from "../styles/selectStyles";
 import "./FrontPage.css";
 
 export default function FrontPage() {
+  const quickSearchTags = [
+    "Election",
+    "Voting",
+    "Campaign Finance",
+    "Healthcare",
+    "Economy",
+    "Education",
+  ];
+
   const [query, setQuery] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
   const [startDate, setStartDate] = useState(null);
@@ -18,12 +31,13 @@ export default function FrontPage() {
   const [platforms, setPlatforms] = useState([]);
   const [platformFilter, setPlatformFilter] = useState("");
   const [advertisers, setAdvertisers] = useState([]);
-  const [overview, setOverview] = useState({
-    total_spend: 0,
-    total_impressions: 0,
-    advertiser_count: 0,
-  });
-  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [topAdvertisers, setTopAdvertisers] = useState([]);
+  const [topAdvertisersLoading, setTopAdvertisersLoading] = useState(true);
+  const [topAdvertisersError, setTopAdvertisersError] = useState("");
+  const [trendingAds, setTrendingAds] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState("");
+  const topAdvertisersTitleRef = useRef(null);
   const helpSectionRef = useRef(null);
 
   {
@@ -33,9 +47,8 @@ export default function FrontPage() {
     const loadFilters = async () => {
       try {
         const filters = await fetchFilters();
-        setGeographies(filters.geographies);
         setPlatforms(filters.platforms);
-        setAdvertisers(filters.advertisers);
+        setAdvertisers(filters.geographies); /* Geographies is page_name */
       } catch (error) {
         console.error("Error loading filters:", error);
       }
@@ -45,23 +58,41 @@ export default function FrontPage() {
   }, []);
 
   useEffect(() => {
-    const loadOverview = async () => {
-      setOverviewLoading(true);
+    const loadTopAdvertisers = async () => {
+      setTopAdvertisersLoading(true);
+      setTopAdvertisersError("");
+
       try {
-        const data = await fetchOverview();
-        setOverview({
-          total_spend: Number(data.total_spend || 0),
-          total_impressions: Number(data.total_impressions || 0),
-          advertiser_count: Number(data.advertiser_count || 0),
-        });
+        const data = await fetchTopAdvertisers();
+        setTopAdvertisers(Array.isArray(data) ? data.slice(0, 10) : []);
       } catch (error) {
-        console.error("Error loading overview:", error);
+        console.error("Error loading top advertisers:", error);
+        setTopAdvertisersError("Unable to load top advertisers right now.");
       } finally {
-        setOverviewLoading(false);
+        setTopAdvertisersLoading(false);
       }
     };
 
-    loadOverview();
+    loadTopAdvertisers();
+  }, []);
+
+  useEffect(() => {
+    const loadTrendingAds = async () => {
+      setTrendingLoading(true);
+      setTrendingError("");
+
+      try {
+        const rows = await fetchRecentAds(6);
+        setTrendingAds(Array.isArray(rows) ? rows.slice(0, 6) : []);
+      } catch (error) {
+        console.error("Error loading trending ads:", error);
+        setTrendingError("Unable to load trending ads right now.");
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    loadTrendingAds();
   }, []);
 
   // Placeholder search handler
@@ -105,6 +136,15 @@ export default function FrontPage() {
     }
   };
 
+  const scrollToInsights = () => {
+    if (topAdvertisersTitleRef.current) {
+      topAdvertisersTitleRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  };
+
   {
     /* Prepare options for dropdowns, including "All" option */
   }
@@ -126,33 +166,6 @@ export default function FrontPage() {
     })),
   ];
 
-  {
-    /* Quick filter tags for top platforms, countries, and advertisers */
-  }
-  const featuredPlatformTags = platforms.slice(0, 2).map((platform) => ({
-    label: platform,
-    type: "platform",
-    value: platform,
-  }));
-
-  const featuredCountryTags = geographies.slice(0, 2).map((country) => ({
-    label: country,
-    type: "country",
-    value: country,
-  }));
-
-  const featuredAdvertiserTags = advertisers.slice(0, 2).map((advertiser) => ({
-    label: advertiser,
-    type: "advertiser",
-    value: advertiser,
-  }));
-
-  const quickFilterTags = [
-    ...featuredPlatformTags,
-    ...featuredCountryTags,
-    ...featuredAdvertiserTags,
-  ];
-
   const selectedCountryOption =
     countryOptions.find((option) => option.value === countryFilter) || null;
   const selectedPlatformOption =
@@ -161,27 +174,12 @@ export default function FrontPage() {
     advertiserOptions.find((option) => option.value === advertiserFilter) ||
     null;
 
-  const applyQuickFilterTag = (tag) => {
-    if (tag.type === "platform") {
-      setPlatformFilter((prev) => (prev === tag.value ? "" : tag.value));
-      return;
-    }
-
-    if (tag.type === "country") {
-      setCountryFilter((prev) => (prev === tag.value ? "" : tag.value));
-      return;
-    }
-
-    if (tag.type === "advertiser") {
-      setAdvertiserFilter((prev) => (prev === tag.value ? "" : tag.value));
-    }
+  const applyQuickSearchTag = (tag) => {
+    setQuery(tag);
   };
 
-  const isQuickTagActive = (tag) => {
-    if (tag.type === "platform") return platformFilter === tag.value;
-    if (tag.type === "country") return countryFilter === tag.value;
-    if (tag.type === "advertiser") return advertiserFilter === tag.value;
-    return false;
+  const isQuickSearchActive = (tag) => {
+    return query.trim().toLowerCase() === tag.toLowerCase();
   };
 
   return (
@@ -343,54 +341,121 @@ export default function FrontPage() {
         </button>
       </form>
 
-      <div className="quick-filters" aria-label="Quick filters">
-        {quickFilterTags.map((tag) => (
+      <div className="quick-filters" aria-label="Quick search starters">
+        {quickSearchTags.map((tag) => (
           <button
-            key={`${tag.type}-${tag.value}`}
+            key={tag}
             type="button"
-            className={`quick-filter-tag ${isQuickTagActive(tag) ? "active" : ""}`}
-            onClick={() => applyQuickFilterTag(tag)}
+            className={`quick-filter-tag ${isQuickSearchActive(tag) ? "active" : ""}`}
+            onClick={() => applyQuickSearchTag(tag)}
           >
-            {tag.label}
+            {tag}
           </button>
         ))}
       </div>
 
-      {/* Called Fun facts in css... Overview Section with key metrics displayed in cards */}
-      <section className="fun-facts-section" aria-live="polite">
-        <h3 className="fun-facts-title">Ad Intelligence Summary</h3>
-        <div className="fun-facts-grid">
-          <div className="fun-fact-card">
-            <p className="fun-fact-label">Total Spend</p>
-            <p className="fun-fact-value">
-              {overviewLoading
-                ? "..."
-                : `$${overview.total_spend.toLocaleString()}`}
-            </p>
+      <div className="help-arrow-container explore-arrow-container">
+        <button onClick={scrollToInsights} className="help-arrow-button">
+          <span className="help-text">Explore</span>
+          <span className="help-arrow">↓</span>
+        </button>
+      </div>
+
+      <section className="top-advertisers-section" aria-live="polite">
+        <h3 ref={topAdvertisersTitleRef} className="top-advertisers-title">
+          Top 10 Advertisers
+        </h3>
+
+        {topAdvertisersLoading ? (
+          <div className="top-advertisers-status">
+            Loading top advertisers...
           </div>
-          <div className="fun-fact-card">
-            <p className="fun-fact-label">Impressions</p>
-            <p className="fun-fact-value">
-              {overviewLoading
-                ? "..."
-                : overview.total_impressions.toLocaleString()}
-            </p>
+        ) : topAdvertisersError ? (
+          <div className="top-advertisers-status error">
+            {topAdvertisersError}
           </div>
-          <div className="fun-fact-card">
-            <p className="fun-fact-label">Advertisers</p>
-            <p className="fun-fact-value">
-              {overviewLoading
-                ? "..."
-                : overview.advertiser_count.toLocaleString()}
-            </p>
+        ) : topAdvertisers.length === 0 ? (
+          <div className="top-advertisers-status">
+            No advertiser data found.
           </div>
+        ) : (
+          <div className="top-advertisers-table-wrap">
+            <table className="top-advertisers-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Advertiser</th>
+                  <th>Estimated Spend</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topAdvertisers.map((row, index) => (
+                  <tr key={`${row.advertiser_name}-${index}`}>
+                    <td>{index + 1}</td>
+                    <td>{row.advertiser_name || "N/A"}</td>
+                    <td>
+                      ${Number(row.estimated_spending || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="trending-ads-section" aria-live="polite">
+        <div className="trending-ads-header">
+          <h3 className="trending-ads-title">Trending Ads Preview</h3>
+          <span className="trending-ads-subtitle">Most recent activity</span>
         </div>
+
+        {trendingLoading ? (
+          <div className="trending-ads-status">Loading recent ads...</div>
+        ) : trendingError ? (
+          <div className="trending-ads-status error">{trendingError}</div>
+        ) : trendingAds.length === 0 ? (
+          <div className="trending-ads-status">No recent ads found.</div>
+        ) : (
+          <div className="trending-ads-row">
+            {trendingAds.map((ad) => (
+              <article
+                key={ad.ad_id || `${ad.page_name}-${ad.start_date}`}
+                className="trending-ad-card"
+              >
+                <div className="trending-ad-topline">
+                  <span className="trending-ad-page">
+                    {ad.page_name || "Unknown advertiser"}
+                  </span>
+                  <span className="trending-ad-date">
+                    {ad.start_date
+                      ? new Date(ad.start_date).toLocaleDateString()
+                      : "Date unavailable"}
+                  </span>
+                </div>
+                <p className="trending-ad-text">
+                  {ad.ad_text || "No ad copy available."}
+                </p>
+                {ad.snapshot_url && (
+                  <a
+                    href={ad.snapshot_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="trending-ad-link"
+                  >
+                    View Snapshot
+                  </a>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Help Arrow Button */}
       <div className="help-arrow-container">
         <button onClick={scrollToHelp} className="help-arrow-button">
-          <span className="help-text">Need Help? Press me!</span>
+          <span className="help-text">Need Help? Down Here!</span>
           <span className="help-arrow">↓</span>
         </button>
       </div>

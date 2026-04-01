@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchAdvertiserDetails, fetchSearchResults } from "../services/api";
+import {
+  fetchAdDetails,
+  fetchAdvertiserDetails,
+  fetchSearchResults,
+} from "../services/api";
 import "./FrontPage.css";
 import "./ResultsPage.css";
 
@@ -11,7 +15,10 @@ export default function ResultsPage() {
   const platform = searchParams.get("platform") || "All Platforms";
 
   const [selectedAd, setSelectedAd] = useState(null);
-  const [showAdvertiserInfo, setShowAdvertiserInfo] = useState(false);
+  const [adDetails, setAdDetails] = useState(null);
+  const [adDetailsLoading, setAdDetailsLoading] = useState(false);
+  const [adDetailsError, setAdDetailsError] = useState("");
+  const [panelView, setPanelView] = useState("ad");
   const [advertiserInfo, setAdvertiserInfo] = useState(null);
   const [advertiserInfoLoading, setAdvertiserInfoLoading] = useState(false);
   const [advertiserInfoError, setAdvertiserInfoError] = useState("");
@@ -20,6 +27,7 @@ export default function ResultsPage() {
 
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const resultsTitleQuery = query?.trim() || "All Ads";
 
   useEffect(() => {
     const performSearch = async () => {
@@ -45,14 +53,14 @@ export default function ResultsPage() {
 
   const sortedResults = [...results].sort((a, b) => {
     if (sortMode === "spend") {
-      const aSpend = Number(a.total_spend) || 0;
-      const bSpend = Number(b.total_spend) || 0;
+      const aSpend = Number(a.estimated_spending) || 0;
+      const bSpend = Number(b.estimated_spending) || 0;
       return sortDirection === "desc" ? bSpend - aSpend : aSpend - bSpend;
     }
 
     if (sortMode === "reach") {
-      const aReach = Number(a.total_impressions) || 0;
-      const bReach = Number(b.total_impressions) || 0;
+      const aReach = Number(a.estimated_impressions) || 0;
+      const bReach = Number(b.estimated_impressions) || 0;
       return sortDirection === "desc" ? bReach - aReach : aReach - bReach;
     }
 
@@ -74,51 +82,100 @@ export default function ResultsPage() {
   };
 
   const totalSpent = results.reduce((sum, ad) => {
-    const spend = Number(ad.total_spend) || 0;
+    const spend = Number(ad.estimated_spending) || 0;
     return sum + spend;
   }, 0);
   const totalReach = results.reduce((sum, ad) => {
-    const Reach = Number(ad.total_impressions) || 0;
+    const Reach = Number(ad.estimated_impressions) || 0;
     return sum + Reach;
   }, 0);
 
-  const openAdvertiserInfo = async () => {
-    if (!selectedAd?.advertiserId) return;
+  const openAdDetails = async (ad) => {
+    const adId = ad?.ad_id;
+    if (!adId) return;
 
-    setShowAdvertiserInfo(true);
-
-    if (advertiserInfo) return;
-
-    setAdvertiserInfoLoading(true);
+    setPanelView("ad");
+    setSelectedAd({
+      ad_id: adId,
+      ad_text: ad.ad_text,
+      page_name: ad.page_name,
+    });
+    setAdDetails(null);
+    setAdDetailsError("");
+    setAdDetailsLoading(true);
+    setAdvertiserInfo(null);
     setAdvertiserInfoError("");
+    setAdvertiserInfoLoading(false);
+
+    try {
+      const details = await fetchAdDetails(adId);
+      setAdDetails(details || {});
+    } catch (error) {
+      console.error("Error fetching ad details:", error);
+      setAdDetailsError("Unable to load ad details right now.");
+    } finally {
+      setAdDetailsLoading(false);
+    }
+  };
+
+  const openAdvertiserInfo = async () => {
+    const advertiserName = detailAd?.page_name;
+    if (!advertiserName) return;
+
+    setPanelView("advertiser");
+    setAdvertiserInfo(null);
+    setAdvertiserInfoError("");
+    setAdvertiserInfoLoading(true);
+
     try {
       const details = await fetchAdvertiserDetails(
-        selectedAd.advertiserId,
-        country !== "All Countries" ? country : null,
+        advertiserName,
         platform !== "All Platforms" ? platform : null,
+        null,
+        null,
       );
       setAdvertiserInfo(details || {});
     } catch (error) {
       console.error("Error fetching advertiser details:", error);
-      setAdvertiserInfoError("Unable to load advertiser info right now.");
+      setAdvertiserInfoError("Unable to load advertiser details right now.");
     } finally {
       setAdvertiserInfoLoading(false);
     }
   };
 
-  const activeFilters = [
-    country !== "All Countries" ? { label: "Geography", value: country } : null,
-    platform !== "All Platforms"
-      ? { label: "Platform", value: platform }
-      : null,
-  ].filter(Boolean);
+  const backToAdInfo = () => {
+    setPanelView("ad");
+  };
+
+  const closeSidePanel = () => {
+    setSelectedAd(null);
+    setAdDetails(null);
+    setAdDetailsError("");
+    setAdDetailsLoading(false);
+    setPanelView("ad");
+    setAdvertiserInfo(null);
+    setAdvertiserInfoLoading(false);
+    setAdvertiserInfoError("");
+  };
+
+  const detailAd = adDetails || selectedAd;
+  const platformBadges = Array.isArray(detailAd?.platforms)
+    ? detailAd.platforms
+    : typeof detailAd?.platforms === "string"
+      ? detailAd.platforms
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+      : [];
 
   return (
     <div className="results-page">
-      <h1 className="results-title">Results Dashboard</h1>
-      <p className="results-subtitle">
-        Explore ad activity with a quick summary and card-based results.
-      </p>
+      <div className="results-overview-header">
+        <div className="results-overview-eyebrow" aria-hidden="true" />
+        <h1 className="results-overview-title">
+          RESULTS OVERVIEW - "{resultsTitleQuery}"
+        </h1>
+      </div>
 
       <div className="results-summary-grid">
         <div className="results-summary-card">
@@ -143,7 +200,10 @@ export default function ResultsPage() {
         Tableau dashboard placeholder (TREND CHART)
       </div>
 
-      <h4 className="results-list-title">Ads List</h4>
+      <div className="results-overview-header">
+        <div className="results-overview-eyebrow" aria-hidden="true" />
+        <h2 className="results-overview-title">AD RESULTS</h2>
+      </div>
       <div className="results-sort-controls">
         <span className="results-sort-label">Sorting:</span>
         <button
@@ -190,31 +250,30 @@ export default function ResultsPage() {
               key={`${ad.campaign || "campaign"}-${ad.advertiser || "advertiser"}-${index}`}
               type="button"
               className="results-ad-card"
-              onClick={() =>
-                setSelectedAd({
-                  advertiserId: ad.advertiser_id,
-                  campaign: ad.campaign,
-                  advertiser: ad.advertiser,
-                  geography: ad.geography,
-                  platform: ad.platform,
-                  creativeType: ad.creative_type,
-                  spent: Number(ad.total_spend) || 0,
-                  reach: Number(ad.total_impressions) || 0,
-                  startDate: ad.start_date,
-                  endDate: ad.end_date,
-                })
-              }
+              onClick={() => openAdDetails(ad)}
             >
               <div className="results-ad-card-top-row">
                 <span className="results-ad-card-advertiser">
-                  {ad.advertiser || "N/A"}
+                  {ad.page_name || "N/A"}
                 </span>
                 <span className="results-ad-card-badge platform">
-                  {ad.platform || "Unknown Platform"}
+                  {ad.platform || "Meta"}
                 </span>
               </div>
 
-              <p className="results-ad-card-campaign">{ad.campaign || "N/A"}</p>
+              <p className="results-ad-card-campaign">{ad.ad_text || "N/A"}</p>
+
+              {ad.snapshot_url && (
+                <a
+                  href={ad.snapshot_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="results-ad-card-link"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  Snapshot URL
+                </a>
+              )}
 
               <div className="results-ad-card-meta-row">
                 <span className="results-ad-card-geography">
@@ -226,13 +285,13 @@ export default function ResultsPage() {
                 <div>
                   <p className="results-ad-card-metric-label">Total Spend</p>
                   <p className="results-ad-card-metric-value">
-                    ${Number(ad.total_spend || 0).toLocaleString()}
+                    ${Number(ad.estimated_spending || 0).toLocaleString()}
                   </p>
                 </div>
                 <div>
                   <p className="results-ad-card-metric-label">Impressions</p>
                   <p className="results-ad-card-metric-value">
-                    {Number(ad.total_impressions || 0).toLocaleString()}
+                    {Number(ad.estimated_impressions || 0).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -241,208 +300,237 @@ export default function ResultsPage() {
       </div>
       {selectedAd && (
         <>
-          <div
-            onClick={() => {
-              setSelectedAd(null);
-              setShowAdvertiserInfo(false);
-              setAdvertiserInfo(null);
-              setAdvertiserInfoError("");
-            }}
-            className="results-modal-overlay"
-          />
+          <div onClick={closeSidePanel} className="results-modal-overlay" />
 
           <div className="results-side-panel">
             <button
-              onClick={() => {
-                setSelectedAd(null);
-                setShowAdvertiserInfo(false);
-                setAdvertiserInfo(null);
-                setAdvertiserInfoError("");
-              }}
+              onClick={closeSidePanel}
               className="results-side-panel-close"
             >
               ×
             </button>
 
-            {!showAdvertiserInfo && (
-              <>
-                <h2 className="results-side-panel-title">Ad Details</h2>
-                <div className="results-side-panel-section">
-                  <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Ad Name</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.campaign || "N/A"}
-                    </span>
-                  </div>
+            <h2 className="results-side-panel-title">
+              {panelView === "advertiser" ? "Advertiser Info" : "Ad Details"}
+            </h2>
 
+            {panelView === "advertiser" && (
+              <button
+                type="button"
+                className="results-side-panel-action secondary"
+                onClick={backToAdInfo}
+              >
+                Back to Ad Info
+              </button>
+            )}
+
+            {panelView === "ad" && adDetailsLoading && (
+              <p className="results-side-panel-status">Loading ad details...</p>
+            )}
+
+            {panelView === "ad" && !adDetailsLoading && adDetailsError && (
+              <p className="results-side-panel-status error">
+                {adDetailsError}
+              </p>
+            )}
+
+            {panelView === "ad" &&
+              !adDetailsLoading &&
+              !adDetailsError &&
+              detailAd && (
+                <div className="results-side-panel-section">
                   <div className="results-side-panel-inline-row">
                     <div className="results-side-panel-field grow">
                       <span className="results-side-panel-label">
                         Advertiser
                       </span>
                       <span className="results-side-panel-value">
-                        {selectedAd.advertiser || "N/A"}
+                        {detailAd.page_name || "N/A"}
                       </span>
                     </div>
                     <button
                       type="button"
                       className="results-side-panel-action"
                       onClick={openAdvertiserInfo}
-                      disabled={!selectedAd.advertiserId}
+                      disabled={!detailAd.page_name || advertiserInfoLoading}
                     >
                       Advertiser Info
                     </button>
                   </div>
 
                   <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Geography</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.geography || "N/A"}
+                    <span className="results-side-panel-label">
+                      Full Ad Text
                     </span>
-                  </div>
-
-                  <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Platform</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.platform || "N/A"}
+                    <span className="results-side-panel-value long-text">
+                      {detailAd.ad_text || "N/A"}
                     </span>
                   </div>
 
                   <div className="results-side-panel-field">
                     <span className="results-side-panel-label">
-                      Creative Type
+                      Link Description
                     </span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.creativeType || "N/A"}
-                    </span>
-                  </div>
-
-                  <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Spent</span>
-                    <span className="results-side-panel-value">
-                      ${selectedAd.spent?.toLocaleString()}
+                    <span className="results-side-panel-value long-text">
+                      {detailAd.link_description || "N/A"}
                     </span>
                   </div>
 
                   <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Reach</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.reach?.toLocaleString()}
-                    </span>
+                    <span className="results-side-panel-label">Snapshot</span>
+                    {detailAd.snapshot_url ? (
+                      <>
+                        <a
+                          href={detailAd.snapshot_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="results-ad-card-link"
+                        >
+                          Open Snapshot URL
+                        </a>
+                      </>
+                    ) : (
+                      <span className="results-side-panel-value">N/A</span>
+                    )}
                   </div>
 
                   <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">Start Date</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.startDate || "N/A"}
-                    </span>
+                    <span className="results-side-panel-label">Platforms</span>
+                    <div className="results-side-panel-platform-badges">
+                      {platformBadges.length > 0 ? (
+                        platformBadges.map((platformName) => (
+                          <span
+                            key={platformName}
+                            className="results-ad-card-badge platform"
+                          >
+                            {platformName}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="results-side-panel-value">N/A</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="results-side-panel-field">
-                    <span className="results-side-panel-label">End Date</span>
-                    <span className="results-side-panel-value">
-                      {selectedAd.endDate || "N/A"}
+                    <span className="results-side-panel-label">Timeline</span>
+                    <div className="results-side-panel-timeline">
+                      <span>{detailAd.start_date || "N/A"}</span>
+                      <div className="results-side-panel-timeline-bar" />
+                      <span>{detailAd.end_date || "Ongoing"}</span>
+                    </div>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">
+                      Spend Range
                     </span>
+                    <div className="results-side-panel-range-row">
+                      <span className="results-side-panel-value">
+                        {detailAd.spend_range || "N/A"}
+                      </span>
+                      <span className="results-side-panel-midpoint">
+                        Midpoint: $
+                        {Number(
+                          detailAd.estimated_spending || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">
+                      Impressions Range
+                    </span>
+                    <div className="results-side-panel-range-row">
+                      <span className="results-side-panel-value">
+                        {detailAd.impressions_range || "N/A"}
+                      </span>
+                      <span className="results-side-panel-midpoint">
+                        Midpoint:{" "}
+                        {Number(
+                          detailAd.estimated_impressions || 0,
+                        ).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </>
+              )}
+
+            {panelView === "advertiser" && advertiserInfoLoading && (
+              <p className="results-side-panel-status">
+                Loading advertiser details...
+              </p>
             )}
 
-            {showAdvertiserInfo && (
-              <>
-                <h2 className="results-side-panel-title">Advertiser Info</h2>
-                <button
-                  type="button"
-                  className="results-side-panel-action secondary"
-                  onClick={() => setShowAdvertiserInfo(false)}
-                >
-                  Back to Ad Details
-                </button>
-
-                <p className="results-side-panel-note">
-                  Note: Advertiser totals are affected by active filters (such
-                  as geography and platform), so values can vary.
+            {panelView === "advertiser" &&
+              !advertiserInfoLoading &&
+              advertiserInfoError && (
+                <p className="results-side-panel-status error">
+                  {advertiserInfoError}
                 </p>
+              )}
 
-                <div className="results-side-panel-filters">
-                  <p className="results-side-panel-filters-title">
-                    Active Filters
-                  </p>
-                  {activeFilters.length === 0 ? (
-                    <p className="results-side-panel-filters-empty">
-                      No active filters
-                    </p>
-                  ) : (
-                    <div className="results-side-panel-filters-list">
-                      {activeFilters.map((filter) => (
-                        <span
-                          key={filter.label}
-                          className="results-side-panel-filter-chip"
-                        >
-                          {filter.label}: {filter.value}
-                        </span>
-                      ))}
+            {panelView === "advertiser" &&
+              !advertiserInfoLoading &&
+              !advertiserInfoError &&
+              advertiserInfo && (
+                <div className="results-side-panel-section">
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">Advertiser</span>
+                    <span className="results-side-panel-value">
+                      {advertiserInfo.advertiser ||
+                        detailAd?.page_name ||
+                        "N/A"}
+                    </span>
+                  </div>
+
+                  <div className="results-advertiser-metrics-grid">
+                    <div className="results-advertiser-metric-card">
+                      <p className="results-advertiser-metric-label">
+                        Total Ads
+                      </p>
+                      <p className="results-advertiser-metric-value">
+                        {Number(advertiserInfo.total_ads || 0).toLocaleString()}
+                      </p>
                     </div>
-                  )}
-                </div>
 
-                {advertiserInfoLoading && (
-                  <p className="results-side-panel-status">
-                    Loading advertiser info...
-                  </p>
-                )}
-
-                {!advertiserInfoLoading && advertiserInfoError && (
-                  <p className="results-side-panel-status error">
-                    {advertiserInfoError}
-                  </p>
-                )}
-
-                {!advertiserInfoLoading && !advertiserInfoError && (
-                  <div className="results-side-panel-section">
-                    <div className="results-side-panel-field">
-                      <span className="results-side-panel-label">
-                        Advertiser
-                      </span>
-                      <span className="results-side-panel-value">
-                        {advertiserInfo?.advertiser || "N/A"}
-                      </span>
-                    </div>
-                    <div className="results-side-panel-field">
-                      <span className="results-side-panel-label">
-                        Total Spend
-                      </span>
-                      <span className="results-side-panel-value">
+                    <div className="results-advertiser-metric-card">
+                      <p className="results-advertiser-metric-label">
+                        Estimated Spend
+                      </p>
+                      <p className="results-advertiser-metric-value">
                         $
                         {Number(
-                          advertiserInfo?.total_spend || 0,
+                          advertiserInfo.estimated_spending || 0,
                         ).toLocaleString()}
-                      </span>
+                      </p>
                     </div>
-                    <div className="results-side-panel-field">
-                      <span className="results-side-panel-label">
-                        Impressions
-                      </span>
-                      <span className="results-side-panel-value">
+
+                    <div className="results-advertiser-metric-card">
+                      <p className="results-advertiser-metric-label">
+                        Estimated Impressions
+                      </p>
+                      <p className="results-advertiser-metric-value">
                         {Number(
-                          advertiserInfo?.impressions || 0,
+                          advertiserInfo.estimated_impressions || 0,
                         ).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="results-side-panel-field">
-                      <span className="results-side-panel-label">
-                        Campaign Count
-                      </span>
-                      <span className="results-side-panel-value">
-                        {Number(
-                          advertiserInfo?.campaign_count || 0,
-                        ).toLocaleString()}
-                      </span>
+                      </p>
                     </div>
                   </div>
-                )}
-              </>
-            )}
+
+                  <div className="results-side-panel-field">
+                    <span className="results-side-panel-label">
+                      Activity Timeline
+                    </span>
+                    <div className="results-side-panel-timeline">
+                      <span>{advertiserInfo.first_seen || "N/A"}</span>
+                      <div className="results-side-panel-timeline-bar" />
+                      <span>{advertiserInfo.last_seen || "N/A"}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         </>
       )}

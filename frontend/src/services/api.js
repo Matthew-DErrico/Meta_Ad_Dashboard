@@ -23,14 +23,21 @@ export const fetchOverview = async () => {
   return response.data;
 };
 
+export const fetchTopAdvertisers = async () => {
+  const response = await axios.get(`${API_BASE_URL}/analytics/top-advertisers`);
+  return response.data;
+};
+
 export const fetchAdvertiserDetails = async (
-  advertiserId,
-  geography,
+  pagename,
   platform,
+  start_date,
+  end_date,
 ) => {
-  const params = { advertiser_id: advertiserId };
-  if (geography) params.geography = geography;
+  const params = { page_name: pagename };
   if (platform) params.platform = platform;
+  if (start_date) params.start_date = start_date;
+  if (end_date) params.end_date = end_date;
 
   const response = await axios.get(
     `${API_BASE_URL}/exploration/advertiser-details`,
@@ -38,5 +45,20 @@ export const fetchAdvertiserDetails = async (
       params,
     },
   );
+  return response.data;
+};
+
+export const fetchAdDetails = async (adId) => {
+  if (!adId) return {};
+  const response = await axios.get(
+    `${API_BASE_URL}/exploration/ad-details/${adId}`,
+  );
+  return response.data;
+};
+
+export const fetchRecentAds = async (limit = 6) => {
+  const response = await axios.get(`${API_BASE_URL}/exploration/ads`, {
+    params: { limit },
+  });
   return response.data;
 };
