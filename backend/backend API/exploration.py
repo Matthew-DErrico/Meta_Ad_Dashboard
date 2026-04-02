@@ -12,16 +12,18 @@ sf = SnowflakeService()
 @exploration_router.get("/search")
 def search_ads(
     keyword: str = Query(..., min_length=2),
+    page: Optional[str] = None,
     geography: Optional[str] = None,
     platform: Optional[str] = None,
 ):
 
-    filter_clause = build_filters(
-        geography,
-        platform
+    where_clause, params = build_filters(
+        page,
+        platform,
+        keyword
     )
 
-    query = """
+    query = f"""
     SELECT
         AD_ID,
         PAGE_NAME,
@@ -35,19 +37,12 @@ def search_ads(
         IMPRESSIONS_RANGE,
         TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
     FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-    WHERE
-        AD_TEXT ILIKE %(keyword)s
-        OR LINK_TITLE ILIKE %(keyword)s
-        OR LINK_DESCRIPTION ILIKE %(keyword)s
-        OR LINK_CAPTION ILIKE %(keyword)s
-        OR PAGE_NAME ILIKE %(keyword)s
-        OR ARRAY_TO_STRING(f.PUBLISHER_PLATFORMS, ',') ILIKE %(keyword)s
+    LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p,
+    {where_clause}
     LIMIT 50
 """
 
-    rows = sf.run_query(query, {
-        "keyword": f"%{keyword}%"
-    })
+    rows = sf.run_query(query, params)
 
     return [
         {
@@ -86,7 +81,7 @@ def ad_details(ad_id: str):
             IMPRESSIONS_RANGE,
             TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
             TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         WHERE AD_ID = %(ad_id)s
     """
 
@@ -144,7 +139,7 @@ def advertiser_details(
             ) AS ESTIMATED_IMPRESSIONS,
             MIN(START_DATE) AS first_seen,
             MAX(START_DATE) AS last_seen
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         {where_clause}
         GROUP BY PAGE_NAME
     """
@@ -190,7 +185,7 @@ def campaign_details(
             MIN(START_DATE) AS start_date,
             MAX(START_DATE) AS end_date
 
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         WHERE COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) = %(campaign)s
         GROUP BY campaign
     """
@@ -213,45 +208,28 @@ def campaign_details(
 
 @exploration_router.get("/ads")
 def ads_list(
-    campaign_id: Optional[int] = None,
-    advertiser_id: Optional[int] = None,
     keyword: Optional[str] = None,
+    page: Optional[str] = None,
+    platform: Optional[str] = None,
     limit: int = 100
 ):
 
-    conditions = []
-    params = {}
+    where_clause, params = build_filters(page, platform, keyword)
 
-    if campaign_id:
-        conditions.append("f.campaign_id = %(campaign_id)s")
-        params["campaign_id"] = campaign_id
-
-    if advertiser_id:
-        conditions.append("f.advertiser_id = %(advertiser_id)s")
-        params["advertiser_id"] = advertiser_id
-
-    if keyword:
-        conditions.append(
-            "LOWER(cre.creative_type) LIKE LOWER(%(keyword)s)"
-        )
-        params["keyword"] = f"%{keyword}%"
-
-    where_clause = ""
-    if conditions:
-        where_clause = "WHERE " + " AND ".join(conditions)
-
-    query = """
+    query = f"""
             SELECT
                 AD_ID,
                 PAGE_NAME,
                 START_DATE,
                 AD_TEXT,
                 SNAPSHOT_URL
-            FROM META_ADS_DB.ANALYTICS.FACT_ADS
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+            LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
+            {where_clause}
             ORDER BY START_DATE DESC
-            LIMIT %(limit)s
+            LIMIT {limit}
         """
-    rows = sf.run_query(query, {"limit": limit})
+    rows = sf.run_query(query, params)
 
     return [
         {
