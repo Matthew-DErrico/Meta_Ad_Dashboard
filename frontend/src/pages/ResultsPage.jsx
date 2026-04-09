@@ -8,6 +8,69 @@ import {
 import "./FrontPage.css";
 import "./ResultsPage.css";
 
+function CompareModal({ ads, onClose }) {
+  if (!ads.length) return null;
+
+  const fields = [
+    { label: "Advertiser",   key: "page_name" },
+    { label: "Ad Text",      key: "ad_text",           long: true },
+    { label: "Platform",     key: "platform" },
+    { label: "Geography",    key: "geography" },
+    { label: "Est. Spend",   key: "estimated_spending", money: true },
+    { label: "Impressions",  key: "estimated_impressions", number: true },
+    { label: "Start Date",   key: "start_date" },
+    { label: "End Date",     key: "end_date" },
+    { label: "Spend Range",  key: "spend_range" },
+  ];
+
+  const fmt = (val, money, number) => {
+    if (val == null || val === "") return "N/A";
+    if (money)  return `$${Number(val).toLocaleString()}`;
+    if (number) return Number(val).toLocaleString();
+    return val;
+  };
+
+  const highestIdx = (fieldKey) => {
+    const nums = ads.map((a) => Number(a[fieldKey]) || 0);
+    const max = Math.max(...nums);
+    return max > 0 ? nums.indexOf(max) : -1;
+  };
+
+  return (
+    <>
+      <div className="results-modal-overlay" onClick={onClose} />
+      <div className="compare-modal">
+        <div className="compare-modal-header">
+          <h2 className="compare-modal-title">Ad Comparison</h2>
+          <button className="results-side-panel-close" onClick={onClose}>×</button>
+        </div>
+        <div className="compare-grid" style={{ gridTemplateColumns: `160px repeat(${ads.length}, 1fr)` }}>
+          <div className="compare-cell compare-label-header" />
+          {ads.map((ad, i) => (
+            <div key={i} className="compare-cell compare-col-header">
+              <span className="compare-col-advertiser">{ad.page_name || "Ad " + (i + 1)}</span>
+              <span className="compare-col-badge">{ad.platform || "Meta"}</span>
+            </div>
+          ))}
+          {fields.map(({ label, key, long, money, number }) => {
+            const best = (money || number) ? highestIdx(key) : -1;
+            return (
+              <div key={key} className="compare-row-group">
+                <div className="compare-cell compare-row-label">{label}</div>
+                {ads.map((ad, i) => (
+                  <div key={i} className={`compare-cell compare-row-value ${long ? "long" : ""} ${best === i ? "highlight" : ""}`}>
+                    {fmt(ad[key], money, number)}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function ResultsPage() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("query") || "";
@@ -28,6 +91,8 @@ export default function ResultsPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const resultsTitleQuery = query?.trim() || "All Ads";
+  const [compareList, setCompareList] = useState([]);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -158,6 +223,17 @@ export default function ResultsPage() {
     setAdvertiserInfoError("");
   };
 
+  const isInCompare = (ad) => compareList.some((c) => c.ad_id === ad.ad_id);
+
+  const toggleCompare = (e, ad) => {
+    e.stopPropagation();
+    if (isInCompare(ad)) {
+      setCompareList((prev) => prev.filter((c) => c.ad_id !== ad.ad_id));
+    } else if (compareList.length < 3) {
+      setCompareList((prev) => [...prev, ad]);
+    }
+  };
+
   const detailAd = adDetails || selectedAd;
   const platformBadges = Array.isArray(detailAd?.platforms)
     ? detailAd.platforms
@@ -244,14 +320,28 @@ export default function ResultsPage() {
         )}
 
         {!loading &&
-          results.length > 0 &&
-          sortedResults.map((ad, index) => (
-            <button
-              key={`${ad.campaign || "campaign"}-${ad.advertiser || "advertiser"}-${index}`}
-              type="button"
-              className="results-ad-card"
-              onClick={() => openAdDetails(ad)}
-            >
+            results.length > 0 &&
+            sortedResults.map((ad, index) => {
+              const inCompare = isInCompare(ad);
+              const atLimit = compareList.length >= 3 && !inCompare;
+              return (
+                <div
+                  key={`${ad.campaign || "campaign"}-${ad.advertiser || "advertiser"}-${index}`}
+                  className={`results-ad-card-wrapper ${inCompare ? "compare-selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className={`compare-toggle-btn ${inCompare ? "active" : ""} ${atLimit ? "disabled" : ""}`}
+                    onClick={(e) => toggleCompare(e, ad)}
+                    disabled={atLimit}
+                  >
+                    {inCompare ? "✓ Added" : "+ Compare"}
+                  </button>
+                  <button
+                    type="button"
+                    className="results-ad-card"
+                    onClick={() => openAdDetails(ad)}
+                  >
               <div className="results-ad-card-top-row">
                 <span className="results-ad-card-advertiser">
                   {ad.page_name || "N/A"}
@@ -296,8 +386,36 @@ export default function ResultsPage() {
                 </div>
               </div>
             </button>
-          ))}
+          </div>
+        );
+      })}
       </div>
+      {compareList.length > 0 && (
+        <div className="compare-bar">
+          <div className="compare-bar-chips">
+            {compareList.map((ad) => (
+              <span key={ad.ad_id} className="compare-bar-chip">
+                {ad.page_name || "Ad"}
+                <button
+                  className="compare-bar-chip-remove"
+                  onClick={() => setCompareList((prev) => prev.filter((c) => c.ad_id !== ad.ad_id))}
+                >×</button>
+              </span>
+            ))}
+            <span className="compare-bar-hint">{3 - compareList.length} slot{3 - compareList.length !== 1 ? "s" : ""} remaining</span>
+          </div>
+          <div className="compare-bar-actions">
+            <button className="compare-bar-clear" onClick={() => setCompareList([])}>Clear</button>
+            <button className="compare-bar-go" onClick={() => setCompareOpen(true)} disabled={compareList.length < 2}>
+              Compare {compareList.length} Ads →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {compareOpen && (
+        <CompareModal ads={compareList} onClose={() => setCompareOpen(false)} />
+      )}
       {selectedAd && (
         <>
           <div onClick={closeSidePanel} className="results-modal-overlay" />
