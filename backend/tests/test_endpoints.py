@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+import pytest
 
 ROOT=Path(__file__).resolve().parents[2]
 def load_module(module_name,relative_path,injected_modules):
@@ -68,6 +69,7 @@ def make_build_filters_module():
 
     analytics_module.build_filters = build_filters
     return analytics_module
+
 def load_analytics_module():
     api_pkg, schemas_module = make_schemas_modules()
     return load_module(
@@ -94,7 +96,6 @@ def load_exploration_module():
         },
     )
 
-
 def load_metadata_module():
     return load_module(
         "test_metadata_module",
@@ -105,12 +106,10 @@ def load_metadata_module():
         },
     )
 
-
 #checks null totals come back as zero
 def test_get_overview_coerces_null_aggregates_to_zero():
     analytics=load_analytics_module()
     calls=[]
-
     class FakeLoader:
         def run_query(self, query, params=None):
             calls.append((query, params))
@@ -123,7 +122,6 @@ def test_get_overview_coerces_null_aggregates_to_zero():
     }
     assert "FROM Fact_Ad_Performance" in calls[0][0]
     assert calls[0][1] is None
-
 
 #checks filters and row mapping
 def test_top_advertisers_applies_filters_and_maps_rows():
@@ -143,22 +141,146 @@ def test_top_advertisers_applies_filters_and_maps_rows():
     assert "AND p.platform_name = %(platform)s" in calls[0][0]
     assert calls[0][1] == {"geography": "Texas", "platform": "Facebook"}
 
+#checks trend rows, filters, and spend casting
+def test_spend_trend_applies_all_filters_and_coerces_spend():
+    analytics=load_analytics_module()
+    calls=[]
+    class FakeLoader:
+        def run_query(self, query,params=None):
+            calls.append((query,params))
+            return [("2026-03-01", "10.5"), ("2026-03-02", 0)]
+
+    analytics.sf=FakeLoader()
+    assert analytics.spend_trend(
+        geography="Texas",
+        platform="Facebook",
+        keyword="education",
+        start_date="2026-03-01",
+        end_date="2026-03-31",
+    )==[
+        {"date": "2026-03-01", "total_spend":10.5},
+        {"date": "2026-03-02", "total_spend":0.0},
+    ]
+    assert "g.geography_name = %(geography)s" in calls[0][0]
+    assert "p.platform_name = %(platform)s" in calls[0][0]
+    assert "LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)" in calls[0][0]
+    assert "d.date >= %(start_date)s" in calls[0][0]
+    assert "d.date <= %(end_date)s" in calls[0][0]
+    assert calls[0][1] == {
+        "geography": "Texas",
+        "platform": "Facebook",
+        "keyword": "%education%",
+        "start_date": "2026-03-01",
+        "end_date": "2026-03-31",
+    }
+#checks geography totals and date filters
+def test_geography_breakdown_maps_rows_and_date_filters():
+    analytics = load_analytics_module()
+    calls=[]
+    class FakeLoader:
+        def run_query(self,query,params=None):
+            calls.append((query, params))
+            return [("Texas","12.25"),("Ohio",0)]
+    analytics.sf = FakeLoader()
+    assert analytics.geography_breakdown(
+        platform="Instagram",
+        keyword="youth",
+        start_date="2026-02-01",
+        end_date="2026-02-28",
+    )==[
+        {"geography": "Texas", "total_spend": 12.25},
+        {"geography": "Ohio", "total_spend": 0.0},
+    ]
+    assert "p.platform_name = %(platform)s" in calls[0][0]
+    assert "LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)" in calls[0][0]
+    assert "d.date >= %(start_date)s" in calls[0][0]
+    assert "d.date <= %(end_date)s" in calls[0][0]
+    assert calls[0][1]=={
+        "platform": "Instagram",
+        "keyword": "%youth%",
+        "start_date": "2026-02-01",
+        "end_date": "2026-02-28",
+    }
+
+#checks platform rows with geography and keyword filters
+def test_platform_breakdown_maps_rows_with_geography_and_keyword_filters():
+    analytics = load_analytics_module()
+    calls=[]
+    class FakeLoader:
+        def run_query(self,query, params=None):
+            calls.append((query, params))
+            return [("Facebook", "9.5"), ("Instagram", "4")]
+
+    analytics.sf=FakeLoader()
+
+    assert analytics.platform_breakdown(geography="Texas",keyword="school")==[
+        {"platform":"Facebook","total_spend":9.5},
+        {"platform":"Instagram","total_spend":4.0},
+    ]
+    assert "g.geography_name = %(geography)s" in calls[0][0]
+    assert "LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)" in calls[0][0]
+    assert calls[0][1] == {"geography": "Texas", "keyword": "%school%"}
+
+
+#checks top campaigns keeps requested limit
+def test_top_campaigns_respects_limit_and_maps_float_totals():
+    analytics = load_analytics_module()
+    calls = []
+
+    class FakeLoader:
+        def run_query(self, query, params=None):
+            calls.append((query, params))
+            return [("Spring Push", "15.75")]
+
+    analytics.sf = FakeLoader()
+    assert analytics.top_campaigns(
+        limit=3,
+        geography="Texas",
+        platform="Facebook",
+        keyword="vote",
+    ) == [{"campaign": "Spring Push", "total_spend": 15.75}]
+    assert "LIMIT 3" in calls[0][0]
+    assert "g.geography_name = %(geography)s" in calls[0][0]
+    assert "p.platform_name = %(platform)s" in calls[0][0]
+    assert "LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)" in calls[0][0]
+    assert calls[0][1] == {
+        "geography": "Texas",
+        "platform": "Facebook",
+        "keyword": "%vote%",
+    }
+
+#checks creative counts stay as returned
+def test_creative_breakdown_applies_filters_and_preserves_counts():
+    analytics=load_analytics_module()
+    calls =[]
+    class FakeLoader:
+        def run_query(self, query, params=None):
+            calls.append((query, params))
+            return [("VIDEO", 5), ("IMAGE", 2)]
+    analytics.sf = FakeLoader()
+    assert analytics.creative_breakdown(geography="Texas", platform="Facebook") == [
+        {"creative_type": "VIDEO", "ad_count": 5},
+        {"creative_type": "IMAGE", "ad_count": 2},
+    ]
+    assert "g.geography_name = %(geography)s" in calls[0][0]
+    assert "p.platform_name = %(platform)s" in calls[0][0]
+    assert calls[0][1] == {"geography": "Texas", "platform": "Facebook"}
 
 #checks empty advertiser results
 def test_advertiser_details_returns_empty_dict_when_no_rows():
     exploration = load_exploration_module()
-    calls = []
+    calls=[]
     class FakeLoader:
         def run_query(self, query, params=None):
             calls.append((query, params))
             return []
 
-    exploration.sf = FakeLoader()
+    exploration.sf=FakeLoader()
     assert exploration.advertiser_details(
         advertiser_id=77,
         geography="Texas",
         platform="Facebook",
-    ) == {}
+    )=={}
     assert "WHERE f.advertiser_id = %(advertiser_id)s" in calls[0][0]
     assert "AND g.geography_name = %(geography)s" in calls[0][0]
     assert "AND p.platform_name = %(platform)s" in calls[0][0]
@@ -167,6 +289,47 @@ def test_advertiser_details_returns_empty_dict_when_no_rows():
         "platform": "Facebook",
         "advertiser_id": 77,
     }
+#checks search results map rows and filters
+def test_search_ads_applies_filters_and_maps_rows():
+    exploration=load_exploration_module()
+    calls=[]
+    class FakeLoader:
+        def run_query(self, query, params=None):
+            calls.append((query, params))
+            return [("Acme", "Spring Push", "21.5")]
+
+    exploration.sf = FakeLoader()
+
+    assert exploration.search_ads(
+        keyword="climate",
+        geography="Texas",
+        platform="Instagram",
+    ) == [{"advertiser": "Acme", "campaign": "Spring Push", "total_spend": 21.5}]
+    assert "g.geography_name = %(geography)s" in calls[0][0]
+    assert "p.platform_name = %(platform)s" in calls[0][0]
+    assert "LOWER(c.campaign_name) LIKE LOWER(%(keyword)s)" in calls[0][0]
+    assert calls[0][1] == {
+        "geography": "Texas",
+        "platform": "Instagram",
+        "keyword": "%climate%",
+    }
+
+
+#checks empty campaign details return empty dict
+def test_campaign_details_returns_empty_dict_when_no_rows():
+    exploration = load_exploration_module()
+    calls = []
+
+    class FakeLoader:
+        def run_query(self, query, params=None):
+            calls.append((query, params))
+            return []
+
+    exploration.sf = FakeLoader()
+
+    assert exploration.campaign_details(campaign_id=11) == {}
+    assert "WHERE f.campaign_id = %(campaign_id)s" in calls[0][0]
+    assert calls[0][1] == {"campaign_id": 11}
 
 #checks ad rows and filter params
 def test_ads_list_combines_filters_and_casts_numeric_fields():
