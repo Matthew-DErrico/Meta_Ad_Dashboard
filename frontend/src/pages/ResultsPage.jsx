@@ -91,6 +91,7 @@ export default function ResultsPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const resultsTitleQuery = query?.trim() || "All Ads";
+<<<<<<< HEAD
   const normalizedQuery = query.trim().toLowerCase();
 
   const highlightMatchedQuery = (text) => {
@@ -133,8 +134,10 @@ export default function ResultsPage() {
 
     return preview;
   };
+=======
   const [compareList, setCompareList] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
+>>>>>>> a869da7fe2eaa1726684a5990847e83fffc74ef3
 
   useEffect(() => {
     const performSearch = async () => {
