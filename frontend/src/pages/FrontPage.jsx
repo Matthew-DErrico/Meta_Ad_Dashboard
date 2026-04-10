@@ -67,7 +67,6 @@ export default function FrontPage() {
         setTopAdvertisers(Array.isArray(data) ? data.slice(0, 10) : []);
       } catch (error) {
         console.error("Error loading top advertisers:", error);
-        console.log(error);
         setTopAdvertisersError("Unable to load top advertisers right now.");
       } finally {
         setTopAdvertisersLoading(false);
