@@ -18,22 +18,18 @@ def build_filters(page_name=None, platform=None, keyword=None, start_date=None, 
         params["page_name"] = page_name
 
     if platform:
-        conditions.append("""
-            EXISTS (
-                SELECT 1
-                FROM LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS) f
-                WHERE f.VALUE::STRING = %(platform)s
-            )
-        """)
+        conditions.append("p.VALUE::STRING = %(platform)s")
         params["platform"] = platform
 
     if keyword:
         conditions.append("""
             (
-                AD_TEXT ILIKE %(keyword)s
-                OR LINK_TITLE ILIKE %(keyword)s
-                OR LINK_DESCRIPTION ILIKE %(keyword)s
-                OR PAGE_NAME ILIKE %(keyword)s
+                AD_TEXT ILIKE %(keyword)s 
+                OR LINK_TITLE ILIKE %(keyword)s 
+                OR LINK_DESCRIPTION ILIKE %(keyword)s 
+                OR LINK_CAPTION ILIKE %(keyword)s 
+                OR PAGE_NAME ILIKE %(keyword)s 
+                OR ARRAY_TO_STRING(f.PUBLISHER_PLATFORMS, ',') ILIKE %(keyword)s
             )
         """)
         params["keyword"] = f"%{keyword}%"
@@ -67,7 +63,7 @@ def get_overview():
                 (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
             ) AS ESTIMATED_IMPRESSIONS,
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
     """
 
     rows = sf.run_query(query)
@@ -91,7 +87,8 @@ def top_advertisers(page_name: Optional[str] = None, platform: Optional[str] = N
                 (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
             ) AS ESTIMATED_SPENDING,
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
         {where_clause}
         GROUP BY PAGE_NAME
         ORDER BY ESTIMATED_SPENDING DESC
@@ -125,7 +122,8 @@ def spend_trend(
                 (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
             ) AS ESTIMATED_SPENDING,
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
         {where_clause}
         GROUP BY START_DATE
         ORDER BY START_DATE
@@ -156,7 +154,8 @@ def ad_volume_trend(
         SELECT
             START_DATE,
             COUNT(*) AS total_ads
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
         {where_clause}
         GROUP BY START_DATE
         ORDER BY START_DATE
@@ -181,8 +180,8 @@ def platform_breakdown(page_name: Optional[str] = None):
                 (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
             ) AS ESTIMATED_SPENDING,
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS,
-        LATERAL FLATTEN(INPUT => PUBLISHER_PLATFORMS)
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f,
+        LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
         {where_clause}
         GROUP BY platform
         ORDER BY ESTIMATED_SPENDING DESC
@@ -215,7 +214,8 @@ def top_campaigns(
                 (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
             ) AS ESTIMATED_SPENDING,
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
         {where_clause}
         GROUP BY campaign
         ORDER BY ESTIMATED_SPENDING DESC
@@ -243,7 +243,7 @@ def creative_breakdown():
                 ELSE 'TEXT_AD'
             END AS creative_type,
             COUNT(*) AS ad_count
-        FROM META_ADS_DB.ANALYTICS.FACT_ADS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         GROUP BY creative_type
     """
 
