@@ -295,6 +295,13 @@
   text-overflow: ellipsis;
 }
 
+.results-query-highlight {
+  background-color: #ffe08a;
+  color: #4b2f00;
+  border-radius: 4px;
+  padding: 0 0.1rem;
+}
+
 .results-ad-card-link {
   color: #1d4ed8;
   font-size: 0.8rem;
@@ -478,6 +485,11 @@
   .results-ad-card-badge.creative {
     background-color: #30325b;
     color: #d9d5ff;
+  }
+
+  .results-query-highlight {
+    background-color: #745900;
+    color: #fff2be;
   }
 
   .results-table-wrap {

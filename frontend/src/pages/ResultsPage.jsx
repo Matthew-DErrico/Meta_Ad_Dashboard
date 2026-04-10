@@ -28,6 +28,48 @@ export default function ResultsPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const resultsTitleQuery = query?.trim() || "All Ads";
+  const normalizedQuery = query.trim().toLowerCase();
+
+  const highlightMatchedQuery = (text) => {
+    const content = String(text || "");
+    if (!normalizedQuery || !content) return content;
+
+    const escapedQuery = normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const matcher = new RegExp(`(${escapedQuery})`, "ig");
+    const segments = content.split(matcher);
+
+    return segments.map((segment, index) =>
+      segment.toLowerCase() === normalizedQuery ? (
+        <mark key={`${segment}-${index}`} className="results-query-highlight">
+          {segment}
+        </mark>
+      ) : (
+        segment
+      ),
+    );
+  };
+
+  const getCardPreviewText = (text) => {
+    const content = String(text || "");
+    if (!content || !normalizedQuery) return content;
+
+    const matchIndex = content.toLowerCase().indexOf(normalizedQuery);
+    if (matchIndex === -1) return content;
+
+    const charsBeforeMatch = 72;
+    const charsAfterMatch = 180;
+    const start = Math.max(0, matchIndex - charsBeforeMatch);
+    const end = Math.min(
+      content.length,
+      matchIndex + normalizedQuery.length + charsAfterMatch,
+    );
+
+    let preview = content.slice(start, end).trim();
+    if (start > 0) preview = `...${preview}`;
+    if (end < content.length) preview = `${preview}...`;
+
+    return preview;
+  };
 
   useEffect(() => {
     const performSearch = async () => {
@@ -254,14 +296,16 @@ export default function ResultsPage() {
             >
               <div className="results-ad-card-top-row">
                 <span className="results-ad-card-advertiser">
-                  {ad.page_name || "N/A"}
+                  {highlightMatchedQuery(ad.page_name || "N/A")}
                 </span>
                 <span className="results-ad-card-badge platform">
                   {ad.platform || "Meta"}
                 </span>
               </div>
 
-              <p className="results-ad-card-campaign">{ad.ad_text || "N/A"}</p>
+              <p className="results-ad-card-campaign">
+                {highlightMatchedQuery(getCardPreviewText(ad.ad_text || "N/A"))}
+              </p>
 
               {ad.snapshot_url && (
                 <a
@@ -345,7 +389,7 @@ export default function ResultsPage() {
                         Advertiser
                       </span>
                       <span className="results-side-panel-value">
-                        {detailAd.page_name || "N/A"}
+                        {highlightMatchedQuery(detailAd.page_name || "N/A")}
                       </span>
                     </div>
                     <button
@@ -363,7 +407,7 @@ export default function ResultsPage() {
                       Full Ad Text
                     </span>
                     <span className="results-side-panel-value long-text">
-                      {detailAd.ad_text || "N/A"}
+                      {highlightMatchedQuery(detailAd.ad_text || "N/A")}
                     </span>
                   </div>
 
@@ -372,7 +416,9 @@ export default function ResultsPage() {
                       Link Description
                     </span>
                     <span className="results-side-panel-value long-text">
-                      {detailAd.link_description || "N/A"}
+                      {highlightMatchedQuery(
+                        detailAd.link_description || "N/A",
+                      )}
                     </span>
                   </div>
 
