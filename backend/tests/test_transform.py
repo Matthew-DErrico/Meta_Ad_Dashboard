@@ -1,6 +1,5 @@
 from backend.ingestion.transform_ads import normalize_ads
-
-
+import pytest
 #checks nested body text and ranges
 def test_normalize_ads_extracts_nested_body_and_formats_ranges():
     raw_ads = [
@@ -39,12 +38,9 @@ def test_normalize_ads_extracts_nested_body_and_formats_ranges():
             "snapshot_url": "https://example.com/ad-1",
         }
     ]
-
-
 #checks missing fields use defaults
 def test_normalize_ads_default_missing_fields():
-    raw_ads=[
-        {
+    raw_ads=[{
             "id": "ad-2",
             "page_id": "page-2",
             "page_name": "Fallback Page",
@@ -52,15 +48,13 @@ def test_normalize_ads_default_missing_fields():
             "ad_delivery_stop_time": "2026-03-12",
             "ad_creative_bodies": ["Plain text body"],
             "ad_snapshot_url": "https://example.com/ad-2",
-        }
-    ]
+        }]
     normalized = normalize_ads(raw_ads)[0]
     assert normalized["ad_creation_time"] == "2026-03-10"
     assert normalized["ad_text"] == "Plain text body"
     assert normalized["publisher_platforms"] == []
     assert normalized["impressions_range"] is None
     assert normalized["spend_range"] is None
-
 
 #checks broken bounds get ignored
 def test_normalize_ads_ignores_incomplete_bounds_and_non_list_bodies():
@@ -73,9 +67,24 @@ def test_normalize_ads_ignores_incomplete_bounds_and_non_list_bodies():
             "ad_creative_bodies": {"text": "not-a-list"},
             "impressions": {"lower_bound": "100"},
             "spend": {"upper_bound": "25"},
-        }
-    ]
+        }]
     normalized=normalize_ads(raw_ads)[0]
     assert normalized["ad_text"] is None
     assert normalized["impressions_range"] is None
     assert normalized["spend_range"] is None
+
+#checks zero bounds are a known gap
+@pytest.mark.xfail(reason="normalize_ads currently drops zero-valued bounds because it checks truthiness.")
+def test_normalize_ads_preserves_zero_bounds():
+    raw_ads=[
+        {"id":"ad-4",
+            "page_id":"page-4",
+            "page_name":"Zero Bounds",
+            "ad_delivery_start_time":"2026-03-20",
+            "impressions": {"lower_bound":0, "upper_bound": 0},
+            "spend": {"lower_bound": 0,"upper_bound": 5},
+        }
+    ]
+    normalized=normalize_ads(raw_ads)[0]
+    assert normalized["impressions_range"]== "0-0"
+    assert normalized["spend_range"] =="0-5"
