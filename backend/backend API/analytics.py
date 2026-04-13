@@ -2,8 +2,6 @@ from fastapi import APIRouter
 from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
-from schemas import OverviewResponse
-from schemas import AdvertiserSpend
 
 analytics_router = APIRouter()
 sf = SnowflakeService()

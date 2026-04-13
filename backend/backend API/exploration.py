@@ -3,8 +3,6 @@ from fastapi import Query
 from typing import Optional
 from snowflake_service import SnowflakeService
 from analytics import build_filters
-from schemas import OverviewResponse
-from schemas import AdvertiserSpend
 
 exploration_router = APIRouter()
 sf = SnowflakeService()
