@@ -8,7 +8,7 @@ sf = SnowflakeService()
 @metadata_router.get("/filters")
 def get_filters():
 
-    geo_query = """
+    page_query = """
         SELECT DISTINCT PAGE_NAME
         FROM META_ADS_DB.ANALYTICS.FACT_ADS
         WHERE PAGE_NAME IS NOT NULL
@@ -22,10 +22,10 @@ def get_filters():
         ORDER BY PLATFORM
     """
 
-    geos = sf.run_query(geo_query)
+    pages = sf.run_query(page_query)
     platforms = sf.run_query(platform_query)
 
     return {
-        "geographies": [g[0] for g in geos],   # now PAGE_NAME proxy
-        "platforms": [p[0] for p in platforms],
+        "pages": [pg[0] for pg in pages],   # now PAGE_NAME proxy
+        "platforms": [pl[0] for pl in platforms],
     }
