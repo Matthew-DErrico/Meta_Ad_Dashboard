@@ -8,6 +8,7 @@ from schemas import AdvertiserSpend
 analytics_router = APIRouter()
 sf = SnowflakeService()
 
+# takes an input of each possible filter for a given endpoint and creates a custom where clause for that endpoints query
 def build_filters(page_name=None, platform=None, keyword=None, start_date=None, end_date=None):
 
     conditions = []
@@ -48,6 +49,7 @@ def build_filters(page_name=None, platform=None, keyword=None, start_date=None, 
 
     return where_clause, params
 
+# Provides a basic overview of all unique pages
 @analytics_router.get("/overview")
 def get_overview():
 
@@ -75,6 +77,8 @@ def get_overview():
         "estimated_impressions": int(rows[0][3]),
     }
 
+# Outputs the top 10 pages based on estimated spending
+# The output can be filtered by a specified page name or platform
 @analytics_router.get("/top-advertisers")
 def top_advertisers(page_name: Optional[str] = None, platform: Optional[str] = None):
 
@@ -102,6 +106,8 @@ def top_advertisers(page_name: Optional[str] = None, platform: Optional[str] = N
         for r in rows
     ]
 
+# provides a list of dates and the total estimated spending for each
+# The list can be filtered using a specific page name, platform, keyword, start date or end date
 @analytics_router.get("/spend-trend")
 def spend_trend(
     page_name: Optional[str] = None,
@@ -133,6 +139,8 @@ def spend_trend(
 
     return [{"date": r[0], "estimated_spending": float(r[1])} for r in rows]
 
+# Provides a list of dates and the total number of ads posted on that day
+# The list can be filtered using a specific page name, platform, keyword, start date or end date
 @analytics_router.get("/ad-volume-trend")
 def ad_volume_trend(
     page_name: Optional[str] = None,
@@ -167,6 +175,9 @@ def ad_volume_trend(
         {"date": r[0], "total_ads": int(r[1])}
         for r in rows
     ]
+
+# Outputs each platform an ad has been run on and the total amount of estimated spending for each
+# The output can be filtered using a specified page name
 @analytics_router.get("/platform-breakdown")
 def platform_breakdown(page_name: Optional[str] = None):
 
@@ -191,7 +202,8 @@ def platform_breakdown(page_name: Optional[str] = None):
 
     return [{"platform": r[0], "total_ads:": r[1], "estimated_spending": float(r[2])} for r in rows]
 
-
+# Provides the top campaigns (shows top 10 by default) based on total estimated spending as well as the number of ads ran
+# The list can be filtered using a specific page, platform or keyword
 @analytics_router.get("/top-campaigns")
 def top_campaigns(
     limit: int = 10,
@@ -233,6 +245,7 @@ def top_campaigns(
         for r in rows
     ]
 
+# Outputs each creative type along with the total number of ads in each category
 @analytics_router.get("/creative-breakdown")
 def creative_breakdown():
 

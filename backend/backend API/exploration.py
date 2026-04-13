@@ -9,6 +9,8 @@ from schemas import AdvertiserSpend
 exploration_router = APIRouter()
 sf = SnowflakeService()
 
+# Returns a list based on a specific keyword and all possible information for each ad in the list
+# List can be filtered using its page name or platform
 @exploration_router.get("/search")
 def search_ads(
     keyword: str = Query(..., min_length=2),
@@ -33,9 +35,9 @@ def search_ads(
         LINK_DESCRIPTION,
         SNAPSHOT_URL,
         SPEND_RANGE,
-        TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+        (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
         IMPRESSIONS_RANGE,
-        TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+        (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
     FROM META_ADS_DB.ANALYTICS.FACT_ADS f
     LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p,
     {where_clause}
@@ -61,6 +63,7 @@ def search_ads(
         for r in rows
     ]
 
+# Returns all possible ad information for an ad specified by unique its ad_id
 @exploration_router.get("/ad-details/{ad_id}")
 def ad_details(ad_id: str):
 
@@ -79,8 +82,8 @@ def ad_details(ad_id: str):
             PUBLISHER_PLATFORMS,
             SPEND_RANGE,
             IMPRESSIONS_RANGE,
-            TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
-            TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+            (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
+            (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
         FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         WHERE AD_ID = %(ad_id)s
     """
@@ -110,6 +113,8 @@ def ad_details(ad_id: str):
         "estimated_impressions": float(r[14]),
     }
 
+# Returns the total number of ads, total estimated spending, total estimated impressions, earliest start date and latest start date for a specified page
+# Page is specified by its page name and the output can be filtered using a specific platform, start date, or end date
 @exploration_router.get("/advertiser-details")
 def advertiser_details(
     page_name: str,
@@ -160,6 +165,7 @@ def advertiser_details(
         "last_seen": r[5],
     }
 
+# returns all details for a specified campaign
 @exploration_router.get("/campaign-details")
 def campaign_details(
     campaign: str,
@@ -206,6 +212,8 @@ def campaign_details(
         "end_date": r[5],
     }
 
+# returns a list of all ads
+# list can be filtered using a keyword, page name or specific platform
 @exploration_router.get("/ads")
 def ads_list(
     keyword: Optional[str] = None,
