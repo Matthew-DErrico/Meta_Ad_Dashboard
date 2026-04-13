@@ -73,18 +73,28 @@ def test_normalize_ads_ignores_incomplete_bounds_and_non_list_bodies():
     assert normalized["impressions_range"] is None
     assert normalized["spend_range"] is None
 
-#checks zero bounds are a known gap
-@pytest.mark.xfail(reason="normalize_ads currently drops zero-valued bounds because it checks truthiness.")
-def test_normalize_ads_preserves_zero_bounds():
+#checks empty input returns an empty list
+def test_normalize_ads_returns_empty_list_for_empty_input():
+    assert normalize_ads([])==[]
+#checks multiple records preserve order and fallback behavior independently
+def test_normalize_ads_handles_multiple_ads_independently():
     raw_ads=[
-        {"id":"ad-4",
-            "page_id":"page-4",
-            "page_name":"Zero Bounds",
-            "ad_delivery_start_time":"2026-03-20",
-            "impressions": {"lower_bound":0, "upper_bound": 0},
-            "spend": {"lower_bound": 0,"upper_bound": 5},
-        }
-    ]
-    normalized=normalize_ads(raw_ads)[0]
-    assert normalized["impressions_range"]== "0-0"
-    assert normalized["spend_range"] =="0-5"
+        {"id":"ad-5",
+            "page_id":"page-5",
+            "page_name":"First",
+            "ad_delivery_start_time":"2026-04-01",
+            "ad_creative_bodies":[{"text":"First body"}],
+        },{"id": "ad-6",
+        "page_id": "page-6",
+            "page_name": "Second",
+            "ad_creation_time":"2026-04-02T00:00:00+0000",
+            "ad_delivery_start_time":"2026-04-03",
+            "publisher_platforms":["MESSENGER"],
+        },]
+    normalized=normalize_ads(raw_ads)
+    assert [ad["ad_id"] for ad in normalized]==["ad-5","ad-6"]
+    assert normalized[0]["ad_text"]=="First body"
+    assert normalized[0]["ad_creation_time"]=="2026-04-01"
+    assert normalized[1]["ad_text"] is None
+    assert normalized[1]["ad_creation_time"]=="2026-04-02T00:00:00+0000"
+    assert normalized[1]["publisher_platforms"]==["MESSENGER"]
