@@ -108,6 +108,8 @@ export default function ResultsPage() {
   const advertiser = searchParams.get("advertiser") || "";
   const country = searchParams.get("country") || "All Countries";
   const platform = searchParams.get("platform") || "All Platforms";
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
 
   const [selectedAd, setSelectedAd] = useState(null);
   const [adDetails, setAdDetails] = useState(null);
@@ -181,6 +183,8 @@ export default function ResultsPage() {
           country !== "All Countries" ? country : null,
           platform !== "All Platforms" ? platform : null,
           advertiser && advertiser !== "All Advertisers" ? advertiser : null,
+          startDate || null,
+          endDate || null,
           {
             offset: 0,
           },
@@ -196,7 +200,7 @@ export default function ResultsPage() {
     };
 
     performSearch();
-  }, [query, country, platform, advertiser]);
+  }, [query, country, platform, advertiser, startDate, endDate]);
 
   const sortedResults = [...allResults].sort((a, b) => {
     if (sortMode === "spend") {
@@ -439,8 +443,8 @@ export default function ResultsPage() {
       const details = await fetchAdvertiserDetails(
         advertiserName,
         platform !== "All Platforms" ? platform : null,
-        null,
-        null,
+        startDate || null,
+        endDate || null,
       );
       setAdvertiserInfo(details || {});
     } catch (error) {

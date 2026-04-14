@@ -119,7 +119,7 @@ export default function Navbar() {
 
           <Select
             options={[
-              { value: "All Advertisers", label: "All Advertisers" },
+              { fontFamily: "'DM Mono', monospace", value: "All Advertisers", label: "All Advertisers" },
               ...advertisers.map((item) => ({ value: item, label: item })),
             ]}
             value={advertiser ? { value: advertiser, label: advertiser } : null}

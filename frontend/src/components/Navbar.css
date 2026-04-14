@@ -14,6 +14,7 @@
 .app-navbar-brand {
   font-size: 1.5rem;
   font-weight: bold;
+  font-family: "Roboto", sans-serif;
   text-decoration: none;
   color: inherit;
   width: fit-content;
@@ -79,6 +80,7 @@
     border: 1px solid #464141;
     background-color: #1f1d1d;
     color: #e8edf7;
+    font-family: "DM Mono", monospace;
   }
 
   .app-navbar-datepicker-wrap .react-datepicker__input-container input {
