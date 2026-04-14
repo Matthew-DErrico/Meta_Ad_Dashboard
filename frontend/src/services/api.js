@@ -7,10 +7,16 @@ export const fetchFilters = async () => {
   return response.data;
 };
 
-export const fetchSearchResults = async (keyword, geography, platform) => {
+export const fetchSearchResults = async (
+  keyword,
+  geography,
+  platform,
+  advertiser,
+) => {
   const params = { keyword };
   if (geography) params.geography = geography;
   if (platform) params.platform = platform;
+  if (advertiser) params.page = advertiser;
 
   const response = await axios.get(`${API_BASE_URL}/exploration/search`, {
     params,

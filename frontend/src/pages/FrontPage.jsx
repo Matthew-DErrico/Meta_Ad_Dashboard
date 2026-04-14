@@ -22,14 +22,10 @@ export default function FrontPage() {
   ];
 
   const [query, setQuery] = useState("");
-  const [countryFilter, setCountryFilter] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [advertiserFilter, setAdvertiserFilter] = useState("");
   const navigate = useNavigate();
-  const [geographies, setGeographies] = useState([]);
-  const [platforms, setPlatforms] = useState([]);
-  const [platformFilter, setPlatformFilter] = useState("");
   const [advertisers, setAdvertisers] = useState([]);
   const [topAdvertisers, setTopAdvertisers] = useState([]);
   const [topAdvertisersLoading, setTopAdvertisersLoading] = useState(true);
@@ -47,7 +43,6 @@ export default function FrontPage() {
     const loadFilters = async () => {
       try {
         const filters = await fetchFilters();
-        setPlatforms(filters.platforms);
         setAdvertisers(filters.geographies); /* Geographies is page_name */
       } catch (error) {
         console.error("Error loading filters:", error);
@@ -102,12 +97,8 @@ export default function FrontPage() {
     // Pass data through URL search params
     const searchParams = new URLSearchParams();
     if (query) searchParams.append("query", query);
-    if (countryFilter && countryFilter !== "All Countries")
-      searchParams.append("country", countryFilter);
     if (advertiserFilter && advertiserFilter !== "All Advertisers")
       searchParams.append("advertiser", advertiserFilter);
-    if (platformFilter && platformFilter !== "All Platforms")
-      searchParams.append("platform", platformFilter);
     if (startDate)
       searchParams.append("startDate", startDate.toISOString().split("T")[0]);
     if (endDate)
@@ -128,6 +119,20 @@ export default function FrontPage() {
   }, []);
 
   const filterDropdownStyle = getFilterDropdownStyle(isDark);
+  const filterControlWidth = 260;
+  const advertiserDropdownStyle = {
+    ...filterDropdownStyle,
+    control: (base, state) => ({
+      ...filterDropdownStyle.control(base, state),
+      width: `${filterControlWidth}px`,
+      minHeight: "48px",
+      padding: "0.35rem",
+    }),
+    menu: (base, state) => ({
+      ...filterDropdownStyle.menu(base, state),
+      width: `${filterControlWidth}px`,
+    }),
+  };
 
   // Scroll to help section smoothly
   const scrollToHelp = () => {
@@ -148,16 +153,6 @@ export default function FrontPage() {
   {
     /* Prepare options for dropdowns, including "All" option */
   }
-  const countryOptions = [
-    { value: "All Countries", label: "All Countries" },
-    ...geographies.map((geo) => ({ value: geo, label: geo })),
-  ];
-
-  const platformOptions = [
-    { value: "All Platforms", label: "All Platforms" },
-    ...platforms.map((platform) => ({ value: platform, label: platform })),
-  ];
-
   const advertiserOptions = [
     { value: "All Advertisers", label: "All Advertisers" },
     ...advertisers.map((advertiser) => ({
@@ -166,10 +161,6 @@ export default function FrontPage() {
     })),
   ];
 
-  const selectedCountryOption =
-    countryOptions.find((option) => option.value === countryFilter) || null;
-  const selectedPlatformOption =
-    platformOptions.find((option) => option.value === platformFilter) || null;
   const selectedAdvertiserOption =
     advertiserOptions.find((option) => option.value === advertiserFilter) ||
     null;
@@ -211,42 +202,18 @@ export default function FrontPage() {
           justifyContent: "center",
         }}
       >
-        {/* Country dropdown with Searchable Options */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Select
-            options={countryOptions}
-            value={selectedCountryOption}
-            isSearchable={true}
-            isClearable={true}
-            placeholder="Country"
-            onChange={(selectedOption) =>
-              setCountryFilter(selectedOption?.value || "")
-            }
-            styles={filterDropdownStyle}
-          />
-        </div>
-        {/* Platform dropdown with Searchable Options */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Select
-            options={platformOptions}
-            value={selectedPlatformOption}
-            isSearchable={true}
-            isClearable={true}
-            placeholder="Platform"
-            onChange={(selectedOption) =>
-              setPlatformFilter(selectedOption?.value || "")
-            }
-            styles={filterDropdownStyle}
-          />
-        </div>
         {/* Date Range Calendar Picker */}
         <style>{`
-        custom-datepicker-wrapper .react-datepicker-wrapper {
-      width: 200px;
+    .custom-datepicker-wrapper .react-datepicker-wrapper {
+      width: ${filterControlWidth}px;
+    }
+    .custom-datepicker-wrapper .react-datepicker__input-container {
+      width: ${filterControlWidth}px;
     }
     .custom-datepicker-wrapper .react-datepicker__input-container input {
-      padding: 0.90rem;
-      width: 175px;
+      box-sizing: border-box;
+      padding: 0.98rem;
+      width: 100%;
       border: 1px solid ${isDark ? "#464141" : "#d1d5db"};
       border-radius: 6px;
       font-size: 14px;
@@ -260,7 +227,6 @@ export default function FrontPage() {
       border-color: #2684FF;
       box-shadow: 0 0 0 1px #2684FF;
     }
-        }
       `}</style>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <div className="custom-datepicker-wrapper">
@@ -295,7 +261,7 @@ export default function FrontPage() {
             onChange={(selectedOption) =>
               setAdvertiserFilter(selectedOption?.value || "")
             }
-            styles={filterDropdownStyle}
+            styles={advertiserDropdownStyle}
           />
         </div>
       </div>
@@ -473,26 +439,6 @@ export default function FrontPage() {
 
         <div className="help-content">
           <div className="help-card">
-            <h3 className="help-card-title">Country Filter</h3>
-            <p className="help-card-description">
-              Select a specific country to filter ads by geographic location.
-              Choose "All Countries" or leave blank to search across all
-              available markets. This helps narrow results to specific regions
-              where ads are running.
-            </p>
-          </div>
-
-          <div className="help-card">
-            <h3 className="help-card-title">Platform Filter</h3>
-            <p className="help-card-description">
-              Filter ads by the Meta platform where they appear (Facebook,
-              Instagram, etc.). Choose "All Platforms" or leave blank to include
-              ads from all available platforms. This allows you to focus on
-              specific channels.
-            </p>
-          </div>
-
-          <div className="help-card">
             <h3 className="help-card-title">Date Range</h3>
             <p className="help-card-description">
               Select a date range to view ads within a specific time period.
@@ -525,9 +471,8 @@ export default function FrontPage() {
             <h3 className="help-card-title">Combining Filters</h3>
             <p className="help-card-description">
               Filters work together to refine your search. For example, you can
-              search for a keyword in a specific country during a particular
-              date range by a certain advertiser. Fill in only the filters you
-              need - all are optional.
+              search for a keyword during a particular date range by a certain
+              advertiser. Fill in only the filters you need - all are optional.
             </p>
           </div>
         </div>

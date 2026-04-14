@@ -3,9 +3,6 @@ meta_ads_client.py – Meta Ads Library API client
 
 This module provides a function to fetch political/issue ads from Meta's
 Ads Archive endpoint. It uses the `ads_read` permission and returns raw JSON.
-
-The endpoint used is graph.facebook.com/v24.0/ads_archive.
-Only safe, publicly available fields are requested.
 """
 
 import os

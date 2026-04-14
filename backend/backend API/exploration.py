@@ -23,8 +23,12 @@ def search_ads(
         keyword
     )
 
+    platform_join = ""
+    if platform:
+        platform_join = "LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p"
+
     query = f"""
-    SELECT
+    SELECT DISTINCT
         AD_ID,
         PAGE_NAME,
         START_DATE,
@@ -37,7 +41,7 @@ def search_ads(
         IMPRESSIONS_RANGE,
         TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
     FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-    LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p,
+    {platform_join}
     {where_clause}
     LIMIT 50
 """
@@ -215,16 +219,21 @@ def ads_list(
 ):
 
     where_clause, params = build_filters(page, platform, keyword)
+    
+    # Causing Ads to duplicate based off each indivdual platform they are apart on so just made it conditional for now
+    platform_join = ""
+    if platform:
+        platform_join = "LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p"
 
     query = f"""
-            SELECT
+            SELECT DISTINCT
                 AD_ID,
                 PAGE_NAME,
                 START_DATE,
                 AD_TEXT,
                 SNAPSHOT_URL
             FROM META_ADS_DB.ANALYTICS.FACT_ADS f
-            LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
+            {platform_join}
             {where_clause}
             ORDER BY START_DATE DESC
             LIMIT {limit}

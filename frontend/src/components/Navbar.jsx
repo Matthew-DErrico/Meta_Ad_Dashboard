@@ -28,14 +28,10 @@ export default function Navbar() {
   const isResultsRoute = location.pathname === "/results";
 
   const [query, setQuery] = useState("");
-  const [country, setCountry] = useState("");
-  const [platform, setPlatform] = useState("");
   const [advertiser, setAdvertiser] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
-  const [geographies, setGeographies] = useState([]);
-  const [platforms, setPlatforms] = useState([]);
   const [advertisers, setAdvertisers] = useState([]);
 
   const isDark = useIsDark();
@@ -45,8 +41,6 @@ export default function Navbar() {
 
     const params = new URLSearchParams(location.search);
     setQuery(params.get("query") || "");
-    setCountry(params.get("country") || "");
-    setPlatform(params.get("platform") || "");
     setAdvertiser(params.get("advertiser") || "");
 
     const startDateParam = params.get("startDate");
@@ -61,9 +55,7 @@ export default function Navbar() {
     const loadFilters = async () => {
       try {
         const filters = await fetchFilters();
-        setGeographies(filters.geographies || []);
-        setPlatforms(filters.platforms || []);
-        setAdvertisers(filters.advertisers || []);
+        setAdvertisers(filters.geographies || filters.advertisers || []);
       } catch (error) {
         console.error("Error loading filters:", error);
       }
@@ -101,8 +93,6 @@ export default function Navbar() {
     event.preventDefault();
     const params = new URLSearchParams();
     if (query.trim()) params.set("query", query.trim());
-    if (country) params.set("country", country);
-    if (platform) params.set("platform", platform);
     if (advertiser) params.set("advertiser", advertiser);
     if (startDate)
       params.set("startDate", startDate.toISOString().split("T")[0]);
@@ -129,41 +119,19 @@ export default function Navbar() {
 
           <Select
             options={[
-              { value: "All Countries", label: "All Countries" },
-              ...geographies.map((geo) => ({ value: geo, label: geo })),
+              { value: "All Advertisers", label: "All Advertisers" },
+              ...advertisers.map((item) => ({ value: item, label: item })),
             ]}
-            value={country ? { value: country, label: country } : null}
+            value={advertiser ? { value: advertiser, label: advertiser } : null}
             isSearchable={true}
             isClearable={true}
-            placeholder="Country"
+            placeholder="Advertiser"
             onChange={(selectedOption, actionMeta) => {
-              const nextCountry = selectedOption?.value || "";
-              setCountry(nextCountry);
+              const nextAdvertiser = selectedOption?.value || "";
+              setAdvertiser(nextAdvertiser);
 
               if (actionMeta?.action === "clear") {
-                removeFilterAndApply("country");
-              }
-            }}
-            styles={dropdownStyle}
-            menuPortalTarget={menuPortalTarget}
-            menuPosition="fixed"
-          />
-
-          <Select
-            options={[
-              { value: "All Platforms", label: "All Platforms" },
-              ...platforms.map((item) => ({ value: item, label: item })),
-            ]}
-            value={platform ? { value: platform, label: platform } : null}
-            isSearchable={true}
-            isClearable={true}
-            placeholder="Platform"
-            onChange={(selectedOption, actionMeta) => {
-              const nextPlatform = selectedOption?.value || "";
-              setPlatform(nextPlatform);
-
-              if (actionMeta?.action === "clear") {
-                removeFilterAndApply("platform");
+                removeFilterAndApply("advertiser");
               }
             }}
             styles={dropdownStyle}
@@ -192,28 +160,6 @@ export default function Navbar() {
               popperClassName="app-navbar-datepicker-popper"
             />
           </div>
-
-          <Select
-            options={[
-              { value: "All Advertisers", label: "All Advertisers" },
-              ...advertisers.map((item) => ({ value: item, label: item })),
-            ]}
-            value={advertiser ? { value: advertiser, label: advertiser } : null}
-            isSearchable={true}
-            isClearable={true}
-            placeholder="Advertiser"
-            onChange={(selectedOption, actionMeta) => {
-              const nextAdvertiser = selectedOption?.value || "";
-              setAdvertiser(nextAdvertiser);
-
-              if (actionMeta?.action === "clear") {
-                removeFilterAndApply("advertiser");
-              }
-            }}
-            styles={dropdownStyle}
-            menuPortalTarget={menuPortalTarget}
-            menuPosition="fixed"
-          />
 
           <button type="submit" className="app-navbar-apply-button">
             Apply
