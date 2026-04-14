@@ -17,7 +17,7 @@ BASE_URL = "https://graph.facebook.com/v24.0/ads_archive"
 ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 
 
-def fetch_ads(search_term="election", country="US", limit=25, after=None):
+def fetch_ads(search_term="election", country="US", limit=600, after=None):
     """
     Fetch political/issue ads from Meta Ads Library.
 

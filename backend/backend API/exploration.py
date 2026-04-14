@@ -15,6 +15,8 @@ def search_ads(
     page: Optional[str] = None,
     geography: Optional[str] = None,
     platform: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
     limit: Optional[int] = Query(None, ge=1, le=5000),
     offset: int = Query(0, ge=0),
 ):
@@ -22,7 +24,9 @@ def search_ads(
     where_clause, params = build_filters(
         page,
         platform,
-        keyword
+        keyword,
+        start_date,
+        end_date,
     )
 
     platform_join = ""

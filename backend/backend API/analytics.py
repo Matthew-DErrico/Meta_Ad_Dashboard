@@ -35,11 +35,13 @@ def build_filters(page_name=None, platform=None, keyword=None, start_date=None, 
         params["keyword"] = f"%{keyword}%"
 
     if start_date:
-        conditions.append("START_DATE >= %(start_date)s")
+        conditions.append(
+            "COALESCE(END_DATE, TO_DATE('9999-12-31')) >= %(start_date)s"
+        )
         params["start_date"] = start_date
 
     if end_date:
-        conditions.append("END_DATE <= %(end_date)s")
+        conditions.append("START_DATE <= %(end_date)s")
         params["end_date"] = end_date
 
     where_clause = ""
