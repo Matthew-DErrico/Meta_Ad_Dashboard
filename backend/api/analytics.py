@@ -141,7 +141,8 @@ def platform_breakdown(geography: Optional[str] = None, keyword: Optional[str] =
 
 
 @analytics_router.get("/top-campaigns")
-def top_campaigns(limit: int = 10, geography: Optional[str] = None, platform: Optional[str] = None, keyword: Optional[str] = None):
+def top_campaigns(limit: int = Query(10, ge=1, le=100), geography: Optional[str] = None, platform: Optional[str] = None, keyword: Optional[str] = None):
+    safe_limit = int(limit)
     where_clause, params = build_filters(geography, platform, keyword)
     query = f"""
         SELECT
@@ -155,7 +156,7 @@ def top_campaigns(limit: int = 10, geography: Optional[str] = None, platform: Op
         {where_clause}
         GROUP BY c.campaign_name
         ORDER BY total_spend DESC
-        LIMIT {limit}
+        LIMIT {safe_limit}
     """
     rows = sf.run_query(query, params)
     return [{"campaign": r[0], "total_spend": float(r[1])} for r in rows]
