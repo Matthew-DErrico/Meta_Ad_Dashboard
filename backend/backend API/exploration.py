@@ -15,6 +15,8 @@ def search_ads(
     page: Optional[str] = None,
     geography: Optional[str] = None,
     platform: Optional[str] = None,
+    limit: Optional[int] = Query(None, ge=1, le=5000),
+    offset: int = Query(0, ge=0),
 ):
 
     where_clause, params = build_filters(
@@ -27,6 +29,15 @@ def search_ads(
     if platform:
         platform_join = "LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p"
 
+    # Added to graphs can use all ads while ad table only uses 50 at a time.
+    # Order By is needed to help with pagination to ensure we are getting the next set of ads instead of the same 50 over and over again.
+    # This is a temporary solution until we can implement proper pagination with cursors or something similar.
+    pagination_clause = ""
+    if limit is not None:
+        params["limit"] = limit
+        params["offset"] = offset
+        pagination_clause = "LIMIT %(limit)s OFFSET %(offset)s"
+
     query = f"""
     SELECT DISTINCT
         AD_ID,
@@ -37,13 +48,14 @@ def search_ads(
         LINK_DESCRIPTION,
         SNAPSHOT_URL,
         SPEND_RANGE,
-        TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
+        (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
         IMPRESSIONS_RANGE,
-        TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+        (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
     FROM META_ADS_DB.ANALYTICS.FACT_ADS f
     {platform_join}
     {where_clause}
-    LIMIT 50
+    ORDER BY START_DATE DESC, AD_ID
+    {pagination_clause}
 """
 
     rows = sf.run_query(query, params)
@@ -83,8 +95,8 @@ def ad_details(ad_id: str):
             PUBLISHER_PLATFORMS,
             SPEND_RANGE,
             IMPRESSIONS_RANGE,
-            TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2)) / 2 AS ESTIMATED_SPENDING,
-            TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2)) / 2 AS ESTIMATED_IMPRESSIONS
+            (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
+            (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
         FROM META_ADS_DB.ANALYTICS.FACT_ADS
         WHERE AD_ID = %(ad_id)s
     """
@@ -132,7 +144,7 @@ def advertiser_details(
     query = f"""
         SELECT
             PAGE_NAME,
-            COUNT(*) AS total_ads,
+            COUNT(DISTINCT AD_ID) AS total_ads,
             SUM(
                 (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
                  TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2

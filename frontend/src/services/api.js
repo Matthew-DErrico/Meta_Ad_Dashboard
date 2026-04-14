@@ -12,11 +12,14 @@ export const fetchSearchResults = async (
   geography,
   platform,
   advertiser,
+  options = {},
 ) => {
   const params = { keyword };
   if (geography) params.geography = geography;
   if (platform) params.platform = platform;
   if (advertiser) params.page = advertiser;
+  if (Number.isFinite(options.limit)) params.limit = options.limit;
+  if (Number.isFinite(options.offset)) params.offset = options.offset;
 
   const response = await axios.get(`${API_BASE_URL}/exploration/search`, {
     params,

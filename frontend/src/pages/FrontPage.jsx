@@ -36,6 +36,10 @@ export default function FrontPage() {
   const topAdvertisersTitleRef = useRef(null);
   const helpSectionRef = useRef(null);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
+
   {
     /* Load filter options on component mount (dropdowns) */
   }
