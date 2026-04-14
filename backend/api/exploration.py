@@ -1,112 +1,249 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
+from fastapi import Query
 from typing import Optional
-from backend.ingestion.snowflake_loader import SnowflakeLoader
-from api.analytics import build_filters
-from api.schemas import OverviewResponse, AdvertiserSpend
+from snowflake_service import SnowflakeService
+from analytics import build_filters
 
 exploration_router = APIRouter()
-sf = SnowflakeLoader()
+sf = SnowflakeService()
 
-
+# Returns a list based on a specific keyword and all possible information for each ad in the list
+# List can be filtered using its page name or platform
 @exploration_router.get("/search")
-def search_ads(keyword: str = Query(..., min_length=2), geography: Optional[str] = None, platform: Optional[str] = None):
-    where_clause, params = build_filters(geography, platform, keyword=keyword)
-    params["keyword"] = f"%{keyword}%"
+def search_ads(
+    keyword: str = Query(..., min_length=2),
+    page: Optional[str] = None,
+    geography: Optional[str] = None,
+    platform: Optional[str] = None,
+):
+
+    where_clause, params = build_filters(
+        page,
+        platform,
+        keyword
+    )
 
     query = f"""
-        SELECT a.advertiser_name, c.campaign_name, SUM(f.ad_spend) AS total_spend
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        LEFT JOIN Dim_Date d ON f.date_id = d.date_id
-        {where_clause}
-        GROUP BY a.advertiser_name, c.campaign_name
-        LIMIT 25
-    """
+    SELECT
+        AD_ID,
+        PAGE_NAME,
+        START_DATE,
+        AD_TEXT,
+        LINK_TITLE,
+        LINK_DESCRIPTION,
+        SNAPSHOT_URL,
+        SPEND_RANGE,
+        (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
+        IMPRESSIONS_RANGE,
+        (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
+    FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+    LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p,
+    {where_clause}
+    LIMIT 50
+"""
+
     rows = sf.run_query(query, params)
-    return [{"advertiser": r[0], "campaign": r[1], "total_spend": float(r[2])} for r in rows]
 
+    return [
+        {
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "link_title": r[4],
+            "link_description": r[5],
+            "spending_range": r[7],
+            "estimated_spending": r[8],
+            "impressions_range": r[9],
+            "estimated_impressions": r[10],
+            "snapshot_url": r[6]
+        }
+        for r in rows
+    ]
 
-@exploration_router.get("/advertiser-details")
-def advertiser_details(advertiser_id: int, geography: Optional[str] = None, platform: Optional[str] = None):
-    where_clause, params = build_filters(geography, platform)
-    params["advertiser_id"] = advertiser_id
+# Returns all possible ad information for an ad specified by unique its ad_id
+@exploration_router.get("/ad-details/{ad_id}")
+def ad_details(ad_id: str):
 
-    query = f"""
-        SELECT a.advertiser_name, SUM(f.ad_spend) AS total_spend,
-               SUM(f.impressions) AS total_impressions,
-               COUNT(DISTINCT f.campaign_id) AS campaign_count
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        LEFT JOIN Dim_Geography g ON f.geography_id = g.geography_id
-        LEFT JOIN Dim_Platform p ON f.platform_id = p.platform_id
-        WHERE f.advertiser_id = %(advertiser_id)s
-        {"AND " + where_clause.replace("WHERE ", "") if where_clause else ""}
-        GROUP BY a.advertiser_name
-    """
-    rows = sf.run_query(query, params)
-    if not rows:
-        return {}
-    return {
-        "advertiser": rows[0][0],
-        "total_spend": float(rows[0][1]),
-        "impressions": int(rows[0][2]),
-        "campaign_count": int(rows[0][3])
-    }
-
-
-@exploration_router.get("/campaign-details")
-def campaign_details(campaign_id: int):
     query = """
-        SELECT c.campaign_name,
-               SUM(f.ad_spend) AS total_spend,
-               SUM(f.impressions) AS impressions,
-               MIN(d.date) AS start_date,
-               MAX(d.date) AS end_date
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        JOIN Dim_Date d ON f.date_id = d.date_id
-        WHERE f.campaign_id = %(campaign_id)s
-        GROUP BY c.campaign_name
+        SELECT
+            AD_ID,
+            PAGE_ID,
+            PAGE_NAME,
+            AD_TEXT,
+            LINK_TITLE,
+            LINK_DESCRIPTION,
+            LINK_CAPTION,
+            SNAPSHOT_URL,
+            START_DATE,
+            END_DATE,
+            PUBLISHER_PLATFORMS,
+            SPEND_RANGE,
+            IMPRESSIONS_RANGE,
+            (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2 AS ESTIMATED_SPENDING,
+            (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) + TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2 AS ESTIMATED_IMPRESSIONS
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        WHERE AD_ID = %(ad_id)s
     """
-    rows = sf.run_query(query, {"campaign_id": campaign_id})
+
+    rows = sf.run_query(query, {"ad_id": ad_id})
+
     if not rows:
         return {}
+
+    r = rows[0]
+
     return {
-        "campaign": rows[0][0],
-        "total_spend": float(rows[0][1]),
-        "impressions": int(rows[0][2]),
-        "start_date": rows[0][3],
-        "end_date": rows[0][4]
+        "ad_id": r[0],
+        "page_id": r[1],
+        "page_name": r[2],
+        "ad_text": r[3],
+        "link_title": r[4],
+        "link_description": r[5],
+        "link_caption": r[6],
+        "snapshot_url": r[7],
+        "start_date": r[8],
+        "end_date": r[9],
+        "platforms": r[10],
+        "spend_range": r[11],
+        "impressions_range": r[12],
+        "estimated_spending": float(r[13]),
+        "estimated_impressions": float(r[14]),
     }
 
+# Returns the total number of ads, total estimated spending, total estimated impressions, earliest start date and latest start date for a specified page
+# Page is specified by its page name and the output can be filtered using a specific platform, start date, or end date
+@exploration_router.get("/advertiser-details")
+def advertiser_details(
+    page_name: str,
+    platform: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
 
-@exploration_router.get("/ads")
-def ads_list(campaign_id: Optional[int] = None, advertiser_id: Optional[int] = None, keyword: Optional[str] = None):
-    conditions = []
-    params = {}
-    if campaign_id:
-        conditions.append("f.campaign_id = %(campaign_id)s")
-        params["campaign_id"] = campaign_id
-    if advertiser_id:
-        conditions.append("f.advertiser_id = %(advertiser_id)s")
-        params["advertiser_id"] = advertiser_id
-    if keyword:
-        conditions.append("LOWER(cre.creative_type) LIKE LOWER(%(keyword)s)")
-        params["keyword"] = f"%{keyword}%"
-
-    where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
+    where_clause, params = build_filters(
+        page_name=page_name,
+        platform=platform,
+        start_date=start_date,
+        end_date=end_date
+    )
 
     query = f"""
-        SELECT a.advertiser_name, c.campaign_name, cre.creative_type, f.ad_spend, f.impressions
-        FROM Fact_Ad_Performance f
-        JOIN Dim_Advertiser a ON f.advertiser_id = a.advertiser_id
-        JOIN Dim_Campaign c ON f.campaign_id = c.campaign_id
-        LEFT JOIN Dim_Ad_Creative cre ON f.creative_id = cre.creative_id
+        SELECT
+            PAGE_NAME,
+            COUNT(*) AS total_ads,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_IMPRESSIONS,
+            MIN(START_DATE) AS first_seen,
+            MAX(START_DATE) AS last_seen
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
         {where_clause}
-        LIMIT 100
+        GROUP BY PAGE_NAME
     """
+
     rows = sf.run_query(query, params)
-    return [{"advertiser": r[0], "campaign": r[1], "creative_type": r[2], "spend": float(r[3]), "impressions": int(r[4])} for r in rows]
+
+    if not rows:
+        return {}
+
+    r = rows[0]
+
+    return {
+        "advertiser": r[0],
+        "total_ads": int(r[1]),
+        "estimated_spending": float(r[2]),
+        "estimated_impressions": int(r[3]),
+        "first_seen": r[4],
+        "last_seen": r[5],
+    }
+
+# returns all details for a specified campaign
+@exploration_router.get("/campaign-details")
+def campaign_details(
+    campaign: str,
+    page_name: Optional[str] = None,
+):
+
+    params = {
+        "campaign": campaign
+    }
+
+    query = """
+        SELECT
+            COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) AS campaign,
+            COUNT(*) AS total_ads,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_SPENDING,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(IMPRESSIONS_RANGE, '-', 2))) / 2
+            ) AS ESTIMATED_IMPRESSIONS,
+            MIN(START_DATE) AS start_date,
+            MAX(START_DATE) AS end_date
+
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        WHERE COALESCE(LINK_TITLE, LEFT(AD_TEXT, 50)) = %(campaign)s
+        GROUP BY campaign
+    """
+
+    rows = sf.run_query(query, params)
+
+    if not rows:
+        return {}
+
+    r = rows[0]
+
+    return {
+        "campaign": r[0],
+        "total_ads": int(r[1]),
+        "estimated_spending": float(r[2]),
+        "estimated_impressions": int(r[3]),
+        "start_date": r[4],
+        "end_date": r[5],
+    }
+
+# returns a list of all ads
+# list can be filtered using a keyword, page name or specific platform
+@exploration_router.get("/ads")
+def ads_list(
+    keyword: Optional[str] = None,
+    page: Optional[str] = None,
+    platform: Optional[str] = None,
+    limit: int = 100
+):
+
+    where_clause, params = build_filters(page, platform, keyword)
+
+    query = f"""
+            SELECT
+                AD_ID,
+                PAGE_NAME,
+                START_DATE,
+                AD_TEXT,
+                SNAPSHOT_URL
+            FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+            LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS) p
+            {where_clause}
+            ORDER BY START_DATE DESC
+            LIMIT {limit}
+        """
+    rows = sf.run_query(query, params)
+
+    return [
+        {
+            "ad_id": r[0],
+            "page_name": r[1],
+            "start_date": r[2],
+            "ad_text": r[3],
+            "snapshot_url": r[4]
+        }
+        for r in rows
+    ]
