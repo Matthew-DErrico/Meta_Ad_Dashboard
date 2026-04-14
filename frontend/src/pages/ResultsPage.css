@@ -667,6 +667,7 @@
   box-shadow: -14px 0 28px rgba(0, 0, 0, 0.2);
   padding: 1.4rem 1.35rem;
   z-index: 1800;
+  font-family: 'DM Mono', monospace;
   overflow-y: auto;
   text-align: left;
   color: #1e2430;
@@ -1291,6 +1292,7 @@
   .compare-modal-header {
     display: flex;
     justify-content: space-between;
+    font-family: "DM Mono", monospace;
     align-items: center;
     margin-bottom: 1.25rem;
   }

@@ -32,6 +32,7 @@ export const getFilterDropdownStyle = (isDark) => ({
   }),
   singleValue: (base) => ({
     ...base,
+    fontFamily: "'DM Mono', monospace",
     color: isDark ? "#F1EFE8" : "#2C2C2A",
   }),
   placeholder: (base) => ({
