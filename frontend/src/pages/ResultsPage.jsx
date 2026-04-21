@@ -44,9 +44,12 @@ function CompareModal({ ads, onClose }) {
     { label: "Spend Range", key: "spend_range" },
   ];
 
-  const fmt = (val, money, number) => {
+  const fmt = (val, money, number, key) => {
     if (val == null || val === "") return "N/A";
     if (money) return `$${Number(val).toLocaleString()}`;
+    if (number && key === "estimated_impressions" && Number(val) === 0) {
+      return "Not Provided";
+    }
     if (number) return Number(val).toLocaleString();
     return val;
   };
@@ -90,7 +93,7 @@ function CompareModal({ ads, onClose }) {
                     key={i}
                     className={`compare-cell compare-row-value ${long ? "long" : ""} ${best === i ? "highlight" : ""}`}
                   >
-                    {fmt(ad[key], money, number)}
+                    {fmt(ad[key], money, number, key)}
                   </div>
                 ))}
               </div>
@@ -169,6 +172,15 @@ export default function ResultsPage() {
 
     return preview;
   };
+
+  const isZeroImpressionsRange = (rangeValue) =>
+    /^\s*0\s*-\s*0\s*$/.test(String(rangeValue || ""));
+
+  const formatImpressionsRange = (rangeValue) => {
+    if (rangeValue == null || rangeValue === "") return "N/A";
+    return isZeroImpressionsRange(rangeValue) ? "Not Provided" : rangeValue;
+  };
+
   const [compareList, setCompareList] = useState([]);
   const [compareOpen, setCompareOpen] = useState(false);
 
@@ -844,7 +856,11 @@ export default function ResultsPage() {
                         Impressions
                       </p>
                       <p className="results-ad-card-metric-value">
-                        {Number(ad.estimated_impressions || 0).toLocaleString()}
+                        {Number(ad.estimated_impressions || 0) === 0
+                          ? "Not Provided"
+                          : Number(
+                              ad.estimated_impressions || 0,
+                            ).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -1046,13 +1062,15 @@ export default function ResultsPage() {
                     </span>
                     <div className="results-side-panel-range-row">
                       <span className="results-side-panel-value">
-                        {detailAd.impressions_range || "N/A"}
+                        {formatImpressionsRange(detailAd.impressions_range)}
                       </span>
                       <span className="results-side-panel-midpoint">
                         Midpoint:{" "}
-                        {Number(
-                          detailAd.estimated_impressions || 0,
-                        ).toLocaleString()}
+                        {isZeroImpressionsRange(detailAd.impressions_range)
+                          ? "Not Provided"
+                          : Number(
+                              detailAd.estimated_impressions || 0,
+                            ).toLocaleString()}
                       </span>
                     </div>
                   </div>
