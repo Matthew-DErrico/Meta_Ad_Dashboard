@@ -17,45 +17,42 @@ CREATE WAREHOUSE IF NOT EXISTS META_WH
   AUTO_SUSPEND = 60
   AUTO_RESUME = TRUE;
 
--- Create the main database that will hold all schemas and tables.
+-- Create database
 CREATE DATABASE IF NOT EXISTS META_ADS_DB;
 
--- Switch to the newly created (or existing) database.
+-- Use the database
 USE DATABASE META_ADS_DB;
 
--- Create separate schemas for raw staging and final analytics tables.
--- (The pipeline currently writes directly to ANALYTICS, but RAW can be used for staging.)
+-- Create schemas
 CREATE SCHEMA IF NOT EXISTS RAW;
 CREATE SCHEMA IF NOT EXISTS ANALYTICS;
 
--- Activate the warehouse for subsequent DDL/DML operations.
+-- Use warehouse
 USE WAREHOUSE META_WH;
 
--- Switch to the ANALYTICS schema where the fact table will live.
+-- Switch to analytics schema
 USE SCHEMA ANALYTICS;
 
--- Create the main fact table that stores normalised ad data.
--- This table is written by the Python ingestion script (snowflake_loader.py).
+-- Create improved fact table for ad analytics
 CREATE OR REPLACE TABLE FACT_ADS (
-    AD_ID STRING PRIMARY KEY,               -- Unique ad identifier from Meta
-    PAGE_ID STRING,                         -- Facebook page that ran the ad
-    PAGE_NAME STRING,                       -- Name of the page
-    AD_CREATION_TIME TIMESTAMP,             -- When the ad was created
-    START_DATE DATE,                        -- First day the ad was delivered
-    END_DATE DATE,                          -- Last day the ad was delivered
-    AD_TEXT STRING,                         -- Primary creative text
-    LINK_TITLE STRING,                      -- Title of the linked page
-    LINK_DESCRIPTION STRING,                -- Description of the linked page
-    LINK_CAPTION STRING,                    -- Caption for the link
-    IMPRESSIONS_RANGE STRING,               -- e.g. "1000-5000" (lower-upper bound)
-    SPEND_RANGE STRING,                     -- e.g. "25.50-100.00"
-    PUBLISHER_PLATFORMS ARRAY,              -- List of platforms (Facebook, Instagram, etc.)
-    SNAPSHOT_URL STRING,                    -- URL to the ad snapshot on Meta's library
-    INGESTION_DATE DATE DEFAULT CURRENT_DATE  -- When this row was inserted
+    AD_ID STRING PRIMARY KEY,
+    PAGE_ID STRING,
+    PAGE_NAME STRING,
+    AD_CREATION_TIME TIMESTAMP,
+    START_DATE DATE,
+    END_DATE DATE,
+    AD_TEXT STRING,
+    LINK_TITLE STRING,
+    LINK_DESCRIPTION STRING,
+    LINK_CAPTION STRING,
+    IMPRESSIONS_RANGE STRING,
+    SPEND_RANGE STRING,
+    PUBLISHER_PLATFORMS ARRAY,
+    SNAPSHOT_URL STRING,
+    INGESTION_DATE DATE DEFAULT CURRENT_DATE
 );
 
--- Optional quick preview query to verify data.
--- Shows which pages have the most ads.
+-- Optional: quick query to preview data
 SELECT 
     PAGE_ID,
     COUNT(*) AS TOTAL_ADS
@@ -63,22 +60,29 @@ FROM FACT_ADS
 GROUP BY PAGE_ID
 ORDER BY TOTAL_ADS DESC;
 
--- =============================================================================
--- Data Sharing (for team collaboration)
--- =============================================================================
--- Create a share that allows other Snowflake accounts to read the data without
--- copying it. The share is named META_DASHBOARD_SHARE.
-CREATE OR REPLACE SHARE META_DASHBOARD_SHARE;
+-- SELECT COUNT(*) FROM META_ADS_DB.ANALYTICS.FACT_ADS;
 
--- Grant usage on the database and schema to the share.
-GRANT USAGE ON DATABASE META_ADS_DB TO SHARE META_DASHBOARD_SHARE;
-GRANT USAGE ON SCHEMA META_ADS_DB.PUBLIC TO SHARE META_DASHBOARD_SHARE;
+SELECT * FROM META_ADS_DB.ANALYTICS.FACT_ADS LIMIT 100000;
 
--- Grant SELECT on all current (and future) tables in the PUBLIC schema.
--- Note: Our table is in ANALYTICS, but the share grants PUBLIC schema.
--- Adjust if needed.
-GRANT SELECT ON ALL TABLES IN SCHEMA META_ADS_DB.PUBLIC TO SHARE META_DASHBOARD_SHARE;
+-- Data can have missing values, use this to enter default values for PUBLISHER_PLATFORMS
+UPDATE META_ADS_DB.ANALYTICS.FACT_ADS
+SET PUBLISHER_PLATFORMS = ARRAY_CONSTRUCT('Meta', 'Instagram')
+WHERE PUBLISHER_PLATFORMS IS NULL;
 
--- Add a specific consumer account (replace with actual teammate account locator).
-ALTER SHARE META_DASHBOARD_SHARE
-ADD ACCOUNT = LPHUTNN.PZC08721;
+-- Optional: testing
+SELECT
+            PAGE_NAME,
+            SUM(
+                (TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 1)) +
+                 TRY_TO_NUMBER(SPLIT_PART(SPEND_RANGE, '-', 2))) / 2
+                 ) AS ESTIMATED_SPENDING
+        FROM META_ADS_DB.ANALYTICS.FACT_ADS f
+        LEFT JOIN LATERAL FLATTEN(INPUT => f.PUBLISHER_PLATFORMS)
+        GROUP BY PAGE_NAME
+        ORDER BY ESTIMATED_SPENDING DESC;
+        
+
+-- Data can have missing values, use this to enter default values for IMPRESSIONS_RANGE
+UPDATE META_ADS_DB.ANALYTICS.FACT_ADS
+SET IMPRESSIONS_RANGE = '0-0'
+WHERE IMPRESSIONS_RANGE IS NULL;
